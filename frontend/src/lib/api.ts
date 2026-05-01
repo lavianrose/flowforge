@@ -54,6 +54,23 @@ export interface WorkflowRun {
   triggered_by: string;
 }
 
+export interface HealthStats {
+  active_runs: number;
+  success_rate: number;
+  failure_rate: number;
+  avg_duration_seconds: number;
+  total_runs_24h: number;
+  success_runs_24h: number;
+  failed_runs_24h: number;
+  hourly_stats: Array<{
+    hour: number;
+    total_runs: number;
+    success_runs: number;
+    failed_runs: number;
+    avg_duration: number;
+  }>;
+}
+
 class APIClient {
   private token: string | null = null;
 
@@ -146,6 +163,11 @@ class APIClient {
   async getRuns(workflowId?: string): Promise<{ runs: WorkflowRun[] }> {
     const params = workflowId ? `?workflow_id=${workflowId}` : '';
     return this.request(`/runs${params}`);
+  }
+
+  // Stats
+  async getHealthStats(): Promise<HealthStats> {
+    return this.request('/stats/health');
   }
 }
 

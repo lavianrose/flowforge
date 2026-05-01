@@ -1,44 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api, Workflow } from '@/lib/api';
+import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [workflow, setWorkflow] = useState<Workflow | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (params.id) {
-      loadWorkflow(params.id as string);
-    }
-  }, [params.id]);
-
-  const loadWorkflow = async (id: string) => {
-    try {
-      setLoading(true);
-      const data = await api.getWorkflow(id);
-      setWorkflow(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workflow');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: workflow, isLoading, error } = useWorkflow(params.id as string);
+  const deleteMutation = useDeleteWorkflow();
+  const triggerMutation = useTriggerWorkflow();
 
   const handleDelete = async () => {
     if (!workflow) return;
-
     if (!confirm('Are you sure you want to delete this workflow?')) {
       return;
     }
 
     try {
-      await api.deleteWorkflow(workflow.id);
-      router.push('/dashboard');
+      await deleteMutation.mutateAsync(workflow.id);
+      router.push('/dashboard/workflows');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to delete workflow');
     }
@@ -48,21 +28,21 @@ export default function WorkflowDetailPage() {
     if (!workflow) return;
 
     try {
-      await api.triggerWorkflow(workflow.id);
+      await triggerMutation.mutateAsync(workflow.id);
       alert('Workflow triggered successfully');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to trigger workflow');
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <div className="text-center py-12">Loading workflow...</div>;
   }
 
   if (error || !workflow) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error || 'Workflow not found'}
+        {error?.message || 'Workflow not found'}
       </div>
     );
   }
@@ -76,22 +56,24 @@ export default function WorkflowDetailPage() {
         </div>
         <div className="flex space-x-2">
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/dashboard/workflows')}
             className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             Back
           </button>
           <button
             onClick={handleTrigger}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            disabled={triggerMutation.isPending}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
           >
-            Run Workflow
+            {triggerMutation.isPending ? 'Running...' : 'Run Workflow'}
           </button>
           <button
             onClick={handleDelete}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            disabled={deleteMutation.isPending}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
           >
-            Delete
+            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
           </button>
         </div>
       </div>
@@ -181,12 +163,12 @@ export default function WorkflowDetailPage() {
 
       {/* Edit Workflow Button */}
       <div className="mt-6 flex justify-end">
-        <a
-          href={`/dashboard/workflows/${workflow.id}/edit`}
+        <button
+          onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           Edit Workflow
-        </a>
+        </button>
       </div>
     </div>
   );

@@ -1,29 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api, WorkflowRun } from '@/lib/api';
+import { useState } from 'react';
+import { useRuns } from '@/lib/hooks';
+import { useRouter } from 'next/navigation';
 
 export default function RunsPage() {
-  const [runs, setRuns] = useState<WorkflowRun[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const router = useRouter();
+  const { data: runs, isLoading, error, refetch } = useRuns();
   const [filter, setFilter] = useState<'all' | 'running' | 'success' | 'failed'>('all');
-
-  useEffect(() => {
-    loadRuns();
-  }, []);
-
-  const loadRuns = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getRuns();
-      setRuns(data.runs);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load runs');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -40,19 +24,19 @@ export default function RunsPage() {
     }
   };
 
-  const filteredRuns = runs.filter((run) => {
+  const filteredRuns = (runs || []).filter((run) => {
     if (filter === 'all') return true;
     return run.status === filter;
   });
 
-  if (loading) {
+  if (isLoading) {
     return <div className="text-center py-12">Loading runs...</div>;
   }
 
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error}
+        {error.message}
       </div>
     );
   }
@@ -62,7 +46,7 @@ export default function RunsPage() {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Workflow Runs</h2>
         <button
-          onClick={loadRuns}
+          onClick={() => refetch()}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           Refresh
@@ -152,7 +136,7 @@ export default function RunsPage() {
                     : null;
 
                 return (
-                  <tr key={run.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => (window.location.href = `/dashboard/runs/${run.id}`)}>
+                  <tr key={run.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => router.push(`/dashboard/runs/${run.id}`)}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(

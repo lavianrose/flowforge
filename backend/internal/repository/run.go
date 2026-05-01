@@ -318,3 +318,114 @@ func (r *RunRepository) GetSteps(ctx context.Context, runID string) ([]models.Wo
 
 	return steps, nil
 }
+
+// GetHealthStats returns aggregated statistics for the dashboard
+func (r *RunRepository) GetHealthStats(ctx context.Context, tenantID string) (*models.HealthStats, error) {
+	twentyFourHoursAgo := time.Now().Add(-24 * time.Hour)
+
+	// Get active runs
+	var activeRuns int64
+	err := r.conn.QueryRow(ctx,
+		`SELECT COUNT(*) FROM workflow_runs WHERE tenant_id = $1 AND status IN ('pending', 'running')`,
+		tenantID,
+	).Scan(&activeRuns)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get total runs in last 24h
+	var totalRuns24h int64
+	err = r.conn.QueryRow(ctx,
+		`SELECT COUNT(*) FROM workflow_runs WHERE tenant_id = $1 AND created_at >= $2`,
+		tenantID, twentyFourHoursAgo,
+	).Scan(&totalRuns24h)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get success/failed runs in last 24h
+	var successRuns24h, failedRuns24h int64
+	err = r.conn.QueryRow(ctx,
+		`SELECT COUNT(*) FROM workflow_runs WHERE tenant_id = $1 AND created_at >= $2 AND status = 'success'`,
+		tenantID, twentyFourHoursAgo,
+	).Scan(&successRuns24h)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.conn.QueryRow(ctx,
+		`SELECT COUNT(*) FROM workflow_runs WHERE tenant_id = $1 AND created_at >= $2 AND status = 'failed'`,
+		tenantID, twentyFourHoursAgo,
+	).Scan(&failedRuns24h)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate rates
+	var successRate, failureRate float64
+	if totalRuns24h > 0 {
+		successRate = float64(successRuns24h) / float64(totalRuns24h) * 100
+		failureRate = float64(failedRuns24h) / float64(totalRuns24h) * 100
+	}
+
+	// Get average duration for completed runs
+	var avgDuration float64
+	err = r.conn.QueryRow(ctx,
+		`SELECT AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) FROM workflow_runs WHERE tenant_id = $1 AND created_at >= $2 AND status IN ('success', 'failed') AND completed_at IS NOT NULL AND started_at IS NOT NULL`,
+		tenantID, twentyFourHoursAgo,
+	).Scan(&avgDuration)
+	if err != nil {
+		avgDuration = 0
+	}
+
+	// Get hourly stats for the last 24h
+	hourlyQuery := `
+		SELECT
+			EXTRACT(HOUR FROM created_at) AS hour,
+			COUNT(*) AS total_runs,
+			COUNT(*) FILTER (WHERE status = 'success') AS success_runs,
+			COUNT(*) FILTER (WHERE status = 'failed') AS failed_runs,
+			COALESCE(AVG(EXTRACT(EPOCH FROM (completed_at - started_at))) FILTER (WHERE status IN ('success', 'failed') AND completed_at IS NOT NULL AND started_at IS NOT NULL), 0) AS avg_duration
+		FROM workflow_runs
+		WHERE tenant_id = $1 AND created_at >= $2
+		GROUP BY EXTRACT(HOUR FROM created_at)
+		ORDER BY hour
+	`
+
+	rows, err := r.conn.Query(ctx, hourlyQuery, tenantID, twentyFourHoursAgo)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var hourlyStats []models.HourlyStats
+	for rows.Next() {
+		var stat models.HourlyStats
+		err := rows.Scan(
+			&stat.Hour,
+			&stat.TotalRuns,
+			&stat.SuccessRuns,
+			&stat.FailedRuns,
+			&stat.AvgDuration,
+		)
+		if err != nil {
+			return nil, err
+		}
+		hourlyStats = append(hourlyStats, stat)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return &models.HealthStats{
+		ActiveRuns:     activeRuns,
+		SuccessRate:    successRate,
+		FailureRate:    failureRate,
+		AvgDuration:    avgDuration,
+		TotalRuns24h:   totalRuns24h,
+		SuccessRuns24h: successRuns24h,
+		FailedRuns24h:  failedRuns24h,
+		HourlyStats:    hourlyStats,
+	}, nil
+}

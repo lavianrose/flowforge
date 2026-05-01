@@ -27,6 +27,7 @@ type Server struct {
 	runHdl       *handlers.RunHandler
 	scheduleHdl  *handlers.ScheduleHandler
 	webhookHdl   *handlers.WebhookHandler
+	statsHdl     *handlers.StatsHandler
 	scheduler    *scheduler.Scheduler
 }
 
@@ -60,6 +61,8 @@ func New(cfg *config.Config) *Server {
 	webhookRepo := repository.NewWebhookRepository(db.Pool)
 	webhookHdl := handlers.NewWebhookHandler(webhookRepo, workflowRepo, runRepo)
 
+	statsHdl := handlers.NewStatsHandler(runRepo)
+
 	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo)
 
 	return &Server{
@@ -73,6 +76,7 @@ func New(cfg *config.Config) *Server {
 		runHdl: runHdl,
 		scheduleHdl: scheduleHdl,
 		webhookHdl: webhookHdl,
+		statsHdl: statsHdl,
 		scheduler: sched,
 	}
 }
@@ -98,6 +102,9 @@ func (s *Server) Setup() {
 
 	// Protected routes
 	api.Use(s.authMW.Auth())
+
+	// Stats routes
+	api.Get("/stats/health", s.rateLimit.Middleware("read"), s.statsHdl.GetHealthStats)
 
 	// Workflow routes - All authenticated users can view
 	api.Get("/workflows", s.rateLimit.Middleware("read"), s.workflowHdl.ListWorkflows)

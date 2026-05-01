@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { api, WorkflowRun } from '@/lib/api';
+import { useRun } from '@/lib/hooks';
 import { connectSSE } from '@/lib/sse';
 
 interface Step {
@@ -22,34 +22,24 @@ interface Step {
 export default function RunDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [run, setRun] = useState<WorkflowRun | null>(null);
-  const [steps, setSteps] = useState<Step[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: runData, isLoading, error, refetch } = useRun(params.id as string);
+  const [run, setRun] = useState(runData?.run || null);
+  const [steps, setSteps] = useState<Step[]>(runData?.steps || []);
   const [liveMode, setLiveMode] = useState(false);
   const cleanupRef = useRef<(() => void) | null>(null);
 
-  const loadRun = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await api.getRun(params.id as string);
-      setRun(data.run);
-      setSteps(data.steps || []);
+  // Update local state when query data changes
+  useEffect(() => {
+    if (runData) {
+      setRun(runData.run);
+      setSteps(runData.steps || []);
 
       // Auto-enable live mode if run is still running
-      if (data.run.status === 'running' || data.run.status === 'pending') {
+      if (runData.run.status === 'running' || runData.run.status === 'pending') {
         setLiveMode(true);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load run');
-    } finally {
-      setLoading(false);
     }
-  }, [params.id]);
-
-  useEffect(() => {
-    loadRun();
-  }, [loadRun]);
+  }, [runData]);
 
   useEffect(() => {
     if (!liveMode || !run) return;
@@ -119,7 +109,7 @@ export default function RunDetailPage() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-xl">Loading run details...</div>
@@ -130,7 +120,7 @@ export default function RunDetailPage() {
   if (error || !run) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error || 'Run not found'}
+        {error?.message || 'Run not found'}
       </div>
     );
   }
@@ -165,7 +155,7 @@ export default function RunDetailPage() {
             onClick={() => {
               setLiveMode(!liveMode);
               if (!liveMode) {
-                loadRun();
+                refetch();
               }
             }}
             className={`px-4 py-2 rounded-md ${
@@ -178,7 +168,7 @@ export default function RunDetailPage() {
             {liveMode ? 'Live' : 'Live Updates'}
           </button>
           <button
-            onClick={loadRun}
+            onClick={() => refetch()}
             className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Refresh

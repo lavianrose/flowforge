@@ -1,47 +1,43 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api';
-import { Workflow } from '@/lib/api';
+import { useHealthStats } from '@/lib/hooks';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from 'recharts';
 
 export default function DashboardPage() {
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: stats, isLoading, error, refetch } = useHealthStats();
 
-  useEffect(() => {
-    loadWorkflows();
-  }, []);
+  // Prepare chart data
+  const chartData = stats?.hourly_stats.map((stat) => ({
+    hour: `${stat.hour}:00`,
+    total: stat.total_runs,
+    success: stat.success_runs,
+    failed: stat.failed_runs,
+    duration: stat.avg_duration,
+  })) || [];
 
-  const loadWorkflows = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getWorkflows();
-      setWorkflows(data.workflows);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workflows');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTrigger = async (id: string) => {
-    try {
-      await api.triggerWorkflow(id);
-      alert('Workflow triggered successfully');
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to trigger workflow');
-    }
-  };
-
-  if (loading) {
-    return <div className="text-center py-12">Loading workflows...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-xl">Loading dashboard...</div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error}
+        {error.message || 'Failed to load stats'}
       </div>
     );
   }
@@ -49,65 +45,161 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">Workflows</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Overview of your workflow performance
+          </p>
+        </div>
         <button
-          onClick={() => (window.location.href = '/workflows/new')}
+          onClick={() => refetch()}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
-          Create Workflow
+          Refresh
         </button>
       </div>
 
-      {workflows.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow">
-          <p className="text-gray-500 mb-4">No workflows found</p>
-          <button
-            onClick={() => (window.location.href = '/workflows/new')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Create Your First Workflow
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {workflows.map((workflow) => (
-            <div key={workflow.id} className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {workflow.name}
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                {workflow.description || 'No description'}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Active Runs */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Active Runs</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {stats?.active_runs || 0}
               </p>
-              <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
-                <span
-                  className={`px-2 py-1 rounded ${
-                    workflow.active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {workflow.active ? 'Active' : 'Inactive'}
-                </span>
-                <span>{workflow.definition.nodes.length} nodes</span>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => (window.location.href = `/workflows/${workflow.id}`)}
-                  className="flex-1 px-3 py-2 text-sm font-medium text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100"
-                >
-                  View
-                </button>
-                <button
-                  onClick={() => handleTrigger(workflow.id)}
-                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
-                >
-                  Run
-                </button>
-              </div>
             </div>
-          ))}
+            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">⚡</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            Currently executing workflows
+          </p>
         </div>
-      )}
+
+        {/* Success Rate */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Success Rate</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {stats?.success_rate.toFixed(1)}%
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">✅</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            Last 24 hours
+          </p>
+        </div>
+
+        {/* Failure Rate */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Failure Rate</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {stats?.failure_rate.toFixed(1)}%
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">❌</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            Last 24 hours
+          </p>
+        </div>
+
+        {/* Avg Duration */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-500">Avg Duration</p>
+              <p className="text-3xl font-bold text-gray-900 mt-2">
+                {stats?.avg_duration_seconds.toFixed(1)}s
+              </p>
+            </div>
+            <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl">⏱️</span>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-4">
+            Average execution time
+          </p>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Runs by Hour Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">Runs by Hour (Last 24h)</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="success" fill="#10b981" name="Success" />
+              <Bar dataKey="failed" fill="#ef4444" name="Failed" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Average Duration Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold mb-4">
+            Avg Duration by Hour (seconds)
+          </h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line
+                type="monotone"
+                dataKey="duration"
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                name="Avg Duration"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="mt-6 bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4">Summary (Last 24 Hours)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="text-center">
+            <p className="text-sm text-gray-500">Total Runs</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">
+              {stats?.total_runs_24h || 0}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500">Successful</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">
+              {stats?.success_runs_24h || 0}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-500">Failed</p>
+            <p className="text-2xl font-bold text-red-600 mt-1">
+              {stats?.failed_runs_24h || 0}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
