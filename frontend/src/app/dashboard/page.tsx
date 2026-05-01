@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { api, HealthStats } from '@/lib/api';
+import { useHealthStats } from '@/lib/hooks';
 import {
   BarChart,
   Bar,
@@ -16,30 +15,18 @@ import {
 } from 'recharts';
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<HealthStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: stats, isLoading, error, refetch } = useHealthStats();
 
-  useEffect(() => {
-    loadStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(loadStats, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Prepare chart data
+  const chartData = stats?.hourly_stats.map((stat) => ({
+    hour: `${stat.hour}:00`,
+    total: stat.total_runs,
+    success: stat.success_runs,
+    failed: stat.failed_runs,
+    duration: stat.avg_duration,
+  })) || [];
 
-  const loadStats = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getHealthStats();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load stats');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-xl">Loading dashboard...</div>
@@ -50,19 +37,10 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error}
+        {error.message || 'Failed to load stats'}
       </div>
     );
   }
-
-  // Prepare chart data
-  const chartData = stats?.hourly_stats.map((stat) => ({
-    hour: `${stat.hour}:00`,
-    total: stat.total_runs,
-    success: stat.success_runs,
-    failed: stat.failed_runs,
-    duration: stat.avg_duration,
-  })) || [];
 
   return (
     <div>
@@ -74,7 +52,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <button
-          onClick={loadStats}
+          onClick={() => refetch()}
           className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
         >
           Refresh
