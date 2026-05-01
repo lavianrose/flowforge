@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -78,12 +79,13 @@ func (r *RunRepository) List(ctx context.Context, tenantID, workflowID string, l
 	argIdx := 2
 
 	if workflowID != "" {
-		query += " AND workflow_id = $" + string(rune(argIdx+'0'))
+		query += fmt.Sprintf(" AND workflow_id = $%d", argIdx)
 		args = append(args, workflowID)
 		argIdx++
 	}
 
-	query += " ORDER BY created_at DESC LIMIT $" + string(rune(argIdx+'0')) + " OFFSET $" + string(rune(argIdx+1+'0'))
+	query += " ORDER BY created_at DESC"
+	query += fmt.Sprintf(" LIMIT $%d OFFSET $%d", argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := r.conn.Query(ctx, query, args...)
@@ -120,6 +122,86 @@ func (r *RunRepository) List(ctx context.Context, tenantID, workflowID string, l
 	return runs, nil
 }
 
+// ListWithPagination returns runs with pagination and filtering
+func (r *RunRepository) ListWithPagination(ctx context.Context, tenantID string, page, perPage int, status, workflowID, triggeredBy string) ([]models.WorkflowRun, int, error) {
+	// Build WHERE clause
+	whereClause := "WHERE tenant_id = $1"
+	args := []interface{}{tenantID}
+	argCount := 1
+
+	if status != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND status = $%d", argCount)
+		args = append(args, status)
+	}
+
+	if workflowID != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND workflow_id = $%d", argCount)
+		args = append(args, workflowID)
+	}
+
+	if triggeredBy != "" {
+		argCount++
+		whereClause += fmt.Sprintf(" AND triggered_by = $%d", argCount)
+		args = append(args, triggeredBy)
+	}
+
+	// Get total count
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM workflow_runs %s", whereClause)
+	var total int
+	err := r.conn.QueryRow(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated data
+	argCount++
+	offset := (page - 1) * perPage
+	dataQuery := fmt.Sprintf(`
+		SELECT id, workflow_id, tenant_id, status, error, started_at, completed_at, created_by, created_at, triggered_by
+		FROM workflow_runs
+		%s
+		ORDER BY created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argCount, argCount+1)
+
+	args = append(args, perPage, offset)
+
+	rows, err := r.conn.Query(ctx, dataQuery, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var runs []models.WorkflowRun
+	for rows.Next() {
+		var run models.WorkflowRun
+		err := rows.Scan(
+			&run.ID,
+			&run.WorkflowID,
+			&run.TenantID,
+			&run.Status,
+			&run.Error,
+			&run.StartedAt,
+			&run.CompletedAt,
+			&run.CreatedBy,
+			&run.CreatedAt,
+			&run.TriggeredBy,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		runs = append(runs, run)
+	}
+
+	if rows.Err() != nil {
+		return nil, 0, rows.Err()
+	}
+
+	return runs, total, nil
+}
+
 func (r *RunRepository) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error {
 	query := `
 		UPDATE workflow_runs
@@ -130,24 +212,24 @@ func (r *RunRepository) UpdateStatus(ctx context.Context, id string, status stri
 	argIdx := 2
 
 	if errorMsg != nil {
-		query += ", error = $" + string(rune(argIdx+'0'))
+		query += fmt.Sprintf(", error = $%d", argIdx)
 		args = append(args, *errorMsg)
 		argIdx++
 	}
 
 	if startedAt != nil {
-		query += ", started_at = $" + string(rune(argIdx+'0'))
+		query += fmt.Sprintf(", started_at = $%d", argIdx)
 		args = append(args, *startedAt)
 		argIdx++
 	}
 
 	if completedAt != nil {
-		query += ", completed_at = $" + string(rune(argIdx+'0'))
+		query += fmt.Sprintf(", completed_at = $%d", argIdx)
 		args = append(args, *completedAt)
 		argIdx++
 	}
 
-	query += " WHERE id = $" + string(rune(argIdx+'0'))
+	query += fmt.Sprintf(" WHERE id = $%d", argIdx)
 	args = append(args, id)
 
 	_, err := r.conn.Exec(ctx, query, args...)

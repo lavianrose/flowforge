@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/lavianrose/flowforge/internal/models"
 	"github.com/lavianrose/flowforge/internal/repository"
 )
 
@@ -109,15 +110,21 @@ func (h *RunHandler) sendError(c *fiber.Ctx, message string) error {
 
 func (h *RunHandler) ListRuns(c *fiber.Ctx) error {
 	tenantID := c.Locals("tenant_id").(string)
+
+	// Parse pagination params
+	page := c.QueryInt("page", 1)
+	perPage := c.QueryInt("per_page", 20)
+
+	// Parse filters
+	status := c.Query("status")
 	workflowID := c.Query("workflow_id")
+	triggeredBy := c.Query("triggered_by")
 
-	limit := 20
-	offset := 0
-
-	runs, err := h.runRepo.List(c.Context(), tenantID, workflowID, limit, offset)
+	runs, total, err := h.runRepo.ListWithPagination(c.Context(), tenantID, page, perPage, status, workflowID, triggeredBy)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to list runs"})
 	}
 
-	return c.JSON(fiber.Map{"runs": runs})
+	response := models.NewPaginatedResponse(runs, page, perPage, total)
+	return c.JSON(response)
 }
