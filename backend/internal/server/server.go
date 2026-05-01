@@ -13,6 +13,7 @@ import (
 	"github.com/lavianrose/flowforge/internal/handlers"
 	"github.com/lavianrose/flowforge/internal/middleware"
 	"github.com/lavianrose/flowforge/internal/repository"
+	"github.com/lavianrose/flowforge/internal/scheduler"
 )
 
 type Server struct {
@@ -24,6 +25,9 @@ type Server struct {
 	authHdl      *handlers.AuthHandler
 	workflowHdl  *handlers.WorkflowHandler
 	runHdl       *handlers.RunHandler
+	scheduleHdl  *handlers.ScheduleHandler
+	webhookHdl   *handlers.WebhookHandler
+	scheduler    *scheduler.Scheduler
 }
 
 func New(cfg *config.Config) *Server {
@@ -50,6 +54,14 @@ func New(cfg *config.Config) *Server {
 	workflowHdl := handlers.NewWorkflowHandler(workflowRepo, runRepo)
 	runHdl := handlers.NewRunHandler(runRepo)
 
+	scheduleRepo := repository.NewScheduleRepository(db.Pool)
+	scheduleHdl := handlers.NewScheduleHandler(scheduleRepo, workflowRepo, runRepo)
+
+	webhookRepo := repository.NewWebhookRepository(db.Pool)
+	webhookHdl := handlers.NewWebhookHandler(webhookRepo, workflowRepo, runRepo)
+
+	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo)
+
 	return &Server{
 		app: app,
 		cfg: cfg,
@@ -59,6 +71,9 @@ func New(cfg *config.Config) *Server {
 		authHdl: authHdl,
 		workflowHdl: workflowHdl,
 		runHdl: runHdl,
+		scheduleHdl: scheduleHdl,
+		webhookHdl: webhookHdl,
+		scheduler: sched,
 	}
 }
 
@@ -101,8 +116,25 @@ func (s *Server) Setup() {
 
 	// Only Admin can delete
 	api.Delete("/workflows/:id", s.rateLimit.Middleware("write"), s.authMW.Role("admin"), s.workflowHdl.DeleteWorkflow)
+
+	// Schedule routes
+	api.Get("/schedules", s.rateLimit.Middleware("read"), s.scheduleHdl.ListSchedules)
+	api.Post("/workflows/:id/schedule", s.rateLimit.Middleware("write"), editorOrAdmin, s.scheduleHdl.CreateSchedule)
+	api.Delete("/schedules/:id", s.rateLimit.Middleware("write"), editorOrAdmin, s.scheduleHdl.DeleteSchedule)
+
+	// Webhook routes
+	api.Get("/webhooks", s.rateLimit.Middleware("read"), s.webhookHdl.ListWebhooks)
+	api.Post("/workflows/:id/webhook", s.rateLimit.Middleware("write"), editorOrAdmin, s.webhookHdl.CreateWebhook)
+	api.Delete("/webhooks/:id", s.rateLimit.Middleware("write"), editorOrAdmin, s.webhookHdl.DeleteWebhook)
+
+	// Public webhook trigger (no authentication)
+	s.app.Post("/webhooks/:path", s.webhookHdl.TriggerWebhook)
 }
 
 func (s *Server) Start() error {
+	// Start scheduler
+	s.scheduler.Start()
+
+	// Start HTTP server
 	return s.app.Listen(":" + s.cfg.Port)
 }
