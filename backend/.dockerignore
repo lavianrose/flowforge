@@ -1,0 +1,56 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test
+*.test
+*.out
+coverage/
+
+# Vendor
+vendor/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+CLAUDE.md
+TASKS.md
+ARCHITECTURE.md
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+debug
+__debug_bin
+tmp/
+temp/
+
+# Migration backups
+*.bak
+*.tmp
+
+# Air
+.air.toml
