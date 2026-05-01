@@ -1,0 +1,238 @@
+package repository
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/lavianrose/flowforge/internal/models"
+)
+
+type RunRepository struct {
+	conn *pgxpool.Pool
+}
+
+func NewRunRepository(conn *pgxpool.Pool) *RunRepository {
+	return &RunRepository{conn: conn}
+}
+
+func (r *RunRepository) Create(ctx context.Context, run *models.WorkflowRun) error {
+	query := `
+		INSERT INTO workflow_runs (workflow_id, tenant_id, status, created_by, triggered_by)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id, created_at
+	`
+
+	err := r.conn.QueryRow(ctx, query,
+		run.WorkflowID,
+		run.TenantID,
+		run.Status,
+		run.CreatedBy,
+		run.TriggeredBy,
+	).Scan(&run.ID, &run.CreatedAt)
+
+	return err
+}
+
+func (r *RunRepository) Get(ctx context.Context, id, tenantID string) (*models.WorkflowRun, error) {
+	query := `
+		SELECT id, workflow_id, tenant_id, status, error, started_at, completed_at, created_by, created_at, triggered_by
+		FROM workflow_runs
+		WHERE id = $1 AND tenant_id = $2
+	`
+
+	var run models.WorkflowRun
+	err := r.conn.QueryRow(ctx, query, id, tenantID).Scan(
+		&run.ID,
+		&run.WorkflowID,
+		&run.TenantID,
+		&run.Status,
+		&run.Error,
+		&run.StartedAt,
+		&run.CompletedAt,
+		&run.CreatedBy,
+		&run.CreatedAt,
+		&run.TriggeredBy,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, errors.New("run not found")
+		}
+		return nil, err
+	}
+
+	return &run, nil
+}
+
+func (r *RunRepository) List(ctx context.Context, tenantID, workflowID string, limit, offset int) ([]models.WorkflowRun, error) {
+	query := `
+		SELECT id, workflow_id, tenant_id, status, error, started_at, completed_at, created_by, created_at, triggered_by
+		FROM workflow_runs
+		WHERE tenant_id = $1
+	`
+
+	args := []interface{}{tenantID}
+	argIdx := 2
+
+	if workflowID != "" {
+		query += " AND workflow_id = $" + string(rune(argIdx+'0'))
+		args = append(args, workflowID)
+		argIdx++
+	}
+
+	query += " ORDER BY created_at DESC LIMIT $" + string(rune(argIdx+'0')) + " OFFSET $" + string(rune(argIdx+1+'0'))
+	args = append(args, limit, offset)
+
+	rows, err := r.conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var runs []models.WorkflowRun
+	for rows.Next() {
+		var run models.WorkflowRun
+		err := rows.Scan(
+			&run.ID,
+			&run.WorkflowID,
+			&run.TenantID,
+			&run.Status,
+			&run.Error,
+			&run.StartedAt,
+			&run.CompletedAt,
+			&run.CreatedBy,
+			&run.CreatedAt,
+			&run.TriggeredBy,
+		)
+		if err != nil {
+			return nil, err
+		}
+		runs = append(runs, run)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return runs, nil
+}
+
+func (r *RunRepository) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error {
+	query := `
+		UPDATE workflow_runs
+		SET status = $1
+	`
+
+	args := []interface{}{status}
+	argIdx := 2
+
+	if errorMsg != nil {
+		query += ", error = $" + string(rune(argIdx+'0'))
+		args = append(args, *errorMsg)
+		argIdx++
+	}
+
+	if startedAt != nil {
+		query += ", started_at = $" + string(rune(argIdx+'0'))
+		args = append(args, *startedAt)
+		argIdx++
+	}
+
+	if completedAt != nil {
+		query += ", completed_at = $" + string(rune(argIdx+'0'))
+		args = append(args, *completedAt)
+		argIdx++
+	}
+
+	query += " WHERE id = $" + string(rune(argIdx+'0'))
+	args = append(args, id)
+
+	_, err := r.conn.Exec(ctx, query, args...)
+	return err
+}
+
+func (r *RunRepository) CreateStep(ctx context.Context, step *models.WorkflowRunStep) error {
+	query := `
+		INSERT INTO workflow_run_steps (run_id, step_id, status, input, output, error, retry_count)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at
+	`
+
+	err := r.conn.QueryRow(ctx, query,
+		step.RunID,
+		step.StepID,
+		step.Status,
+		step.Input,
+		step.Output,
+		step.Error,
+		step.RetryCount,
+	).Scan(&step.ID, &step.CreatedAt)
+
+	return err
+}
+
+func (r *RunRepository) UpdateStep(ctx context.Context, step *models.WorkflowRunStep) error {
+	query := `
+		UPDATE workflow_run_steps
+		SET status = $1, output = $2, error = $3, retry_count = $4, started_at = $5, completed_at = $6
+		WHERE id = $7
+	`
+
+	_, err := r.conn.Exec(ctx, query,
+		step.Status,
+		step.Output,
+		step.Error,
+		step.RetryCount,
+		step.StartedAt,
+		step.CompletedAt,
+		step.ID,
+	)
+
+	return err
+}
+
+func (r *RunRepository) GetSteps(ctx context.Context, runID string) ([]models.WorkflowRunStep, error) {
+	query := `
+		SELECT id, run_id, step_id, status, input, output, error, retry_count, started_at, completed_at, created_at
+		FROM workflow_run_steps
+		WHERE run_id = $1
+		ORDER BY created_at ASC
+	`
+
+	rows, err := r.conn.Query(ctx, query, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var steps []models.WorkflowRunStep
+	for rows.Next() {
+		var step models.WorkflowRunStep
+		err := rows.Scan(
+			&step.ID,
+			&step.RunID,
+			&step.StepID,
+			&step.Status,
+			&step.Input,
+			&step.Output,
+			&step.Error,
+			&step.RetryCount,
+			&step.StartedAt,
+			&step.CompletedAt,
+			&step.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		steps = append(steps, step)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return steps, nil
+}
