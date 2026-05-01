@@ -7,7 +7,7 @@ Build a real-time multi-tenant workflow orchestration platform inspired by Zapie
 
 Stack:
 
-- Backend: Golang + Fiber
+- Backend: Golang 1.26+ (Fiber)
 - Database: PostgreSQL
 - Cache/Queue: Redis
 - Frontend: Next.js + Tailwind
