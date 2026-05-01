@@ -47,9 +47,9 @@ Always complete highest priority unfinished item first.
 
 ## Current Focus
 
-✅ Backend core completed
-✅ Frontend foundation completed
-✅ React Flow DAG builder completed
+✅ Backend core completed (100%)
+⚠️ Frontend foundation completed (70%)
+✅ React Flow DAG builder completed (edit mode)
 ✅ SSE live monitoring completed
 ✅ Docker deployment completed
 ✅ Documentation completed
@@ -61,7 +61,8 @@ Always complete highest priority unfinished item first.
 ✅ Scheduled/cron triggering completed
 ✅ Webhook triggering completed
 
-**ALL CORE FEATURES COMPLETE!** 🎉🚀
+**BACKEND MVP COMPLETE!** 🎉
+**Frontend enhancements needed for full parity** 🚧
 
 ---
 
@@ -76,12 +77,16 @@ Always complete highest priority unfinished item first.
 - ✅ Comprehensive input validation & sanitization
 - ✅ Rate limiting (Redis-based, configurable per endpoint)
 
-### Frontend Features (100% Complete ✅)
+### Frontend Features (70% Complete ⚠️)
 - ✅ Authentication with JWT
 - ✅ Dashboard with workflow list & details
-- ✅ Visual DAG builder with React Flow
+- ✅ Visual DAG builder with React Flow (edit mode)
 - ✅ Run history with live monitoring (SSE)
 - ✅ Responsive design with Tailwind CSS
+- ⚠️ Visual DAG viewer in workflow detail (read-only mode)
+- ❌ Global health panel with stats
+- ❌ Client-side caching
+- ❌ Optimistic UI updates
 
 ### Infrastructure (100% Complete ✅)
 - ✅ Docker multi-stage builds
@@ -145,3 +150,41 @@ Always complete highest priority unfinished item first.
 - [ ] Integration tests
 - [ ] GitHub Actions CI/CD
 - [ ] ARCHITECTURE.md final review
+
+---
+
+## Priority: Missing Frontend Features
+
+### High Priority - Must Have
+
+- [ ] Add global health panel to dashboard
+  - [ ] Active runs counter (real-time)
+  - [ ] Success/failure rates (last 24 hours)
+  - [ ] Average execution time (last 24 hours)
+  - [ ] Trend charts (using Recharts or Chart.js)
+  - [ ] Add backend API endpoint for stats aggregation
+  - [ ] Poll or SSE for real-time updates
+
+- [ ] Add client-side caching with React Query
+  - [ ] Install @tanstack/react-query
+  - [ ] Wrap app with QueryClientProvider
+  - [ ] Cache workflows list with staleTime
+  - [ ] Cache runs list with staleTime
+  - [ ] Implement stale-while-revalidate strategy
+  - [ ] Add cache invalidation on mutations
+
+- [ ] Implement optimistic UI updates
+  - [ ] Optimistic updates for workflow trigger
+  - [ ] Rollback on error
+  - [ ] Loading states for all mutations
+  - [ ] Toast notifications for success/error
+
+### Medium Priority - Nice to Have
+
+- [ ] Add visual DAG viewer to workflow detail page
+  - [ ] Read-only ReactFlow component
+  - [ ] Reuse existing custom node types
+  - [ ] Disable drag-and-drop, edit, delete
+  - [ ] Add zoom/pan controls
+  - [ ] MiniMap for navigation
+
