@@ -2,6 +2,9 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
+import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
+import 'reactflow/dist/style.css';
+import { nodeTypes } from '@/lib/nodeTypes';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -9,6 +12,24 @@ export default function WorkflowDetailPage() {
   const { data: workflow, isLoading, error } = useWorkflow(params.id as string);
   const deleteMutation = useDeleteWorkflow();
   const triggerMutation = useTriggerWorkflow();
+
+  // Convert workflow definition to ReactFlow format
+  const nodes = workflow ? workflow.definition.nodes.map((node) => ({
+    id: node.id,
+    type: 'custom',
+    position: node.position,
+    data: {
+      type: node.type,
+      label: node.name,
+      config: node.config,
+    },
+  })) : [];
+
+  const edges = workflow ? workflow.definition.edges.map((edge) => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+  })) : [];
 
   const handleDelete = async () => {
     if (!workflow) return;
@@ -159,6 +180,31 @@ export default function WorkflowDetailPage() {
             ))}
           </div>
         </div>
+      </div>
+
+      {/* Visual DAG Viewer */}
+      <div className="mt-6 bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-semibold mb-4">Workflow Visualization</h3>
+        <div className="border border-gray-200 rounded-lg overflow-hidden" style={{ height: '500px' }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            zoomOnScroll={true}
+            panOnScroll={true}
+            fitView
+          >
+            <Background />
+            <Controls />
+            <MiniMap />
+          </ReactFlow>
+        </div>
+        <p className="text-xs text-gray-500 mt-2">
+          💡 This is a read-only view. Use the "Edit Workflow" button to make changes.
+        </p>
       </div>
 
       {/* Edit Workflow Button */}
