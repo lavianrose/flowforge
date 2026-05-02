@@ -227,13 +227,13 @@ export function useRuns(workflowId?: string) {
 }
 
 export function useRun(id: string) {
-  return useQuery({
+  return useQuery<{ run: WorkflowRun; steps: any[] }>({
     queryKey: ['run', id],
     queryFn: () => api.getRun(id),
     enabled: !!id,
-    refetchInterval: (data) => {
+    refetchInterval(data: any) {
       // Poll every 1 second if run is pending or running
-      if (data?.run.status === 'pending' || data?.run.status === 'running') {
+      if (data?.run?.status === 'pending' || data?.run?.status === 'running') {
         return 1000;
       }
       return false;

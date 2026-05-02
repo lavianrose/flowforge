@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useRun } from '@/lib/hooks';
 import { connectSSE } from '@/lib/sse';
+import { WorkflowRun } from '@/lib/api';
 
 interface Step {
   id: string;
