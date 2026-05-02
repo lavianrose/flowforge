@@ -88,11 +88,6 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
-
-          <div className="text-center text-sm text-gray-600">
-            <p>Default credentials:</p>
-            <p className="font-mono text-xs mt-1">admin@flowforge.local / admin123</p>
-          </div>
         </form>
       </div>
     </div>
