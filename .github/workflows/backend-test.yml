@@ -1,0 +1,59 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-test.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-test.yml'
+
+jobs:
+  test:
+    name: Run Backend Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+          cache-dependency-path: backend/go.sum
+
+      - name: Install dependencies
+        working-directory: ./backend
+        run: go mod download
+
+      - name: Run go vet
+        working-directory: ./backend
+        run: go vet ./...
+
+      - name: Run tests
+        working-directory: ./backend
+        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage.out
+          flags: backend
+          name: backend-coverage
+          fail_ci_if_error: false
+
+      - name: Check test coverage
+        working-directory: ./backend
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 50" | bc -l) )); then
+            echo "Coverage ${COVERAGE}% is below threshold 50%"
+            exit 1
+          fi
