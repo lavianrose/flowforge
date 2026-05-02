@@ -34,8 +34,9 @@ services:
   backend-migrate:
     build:
       context: ./backend
-      dockerfile: Dockerfile.migrate
+      dockerfile: Dockerfile
     container_name: flowforge-backend-migrate
+    command: ["./migrate", "up"]
     environment:
       POSTGRES_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
     depends_on:
@@ -46,8 +47,9 @@ services:
   backend-seed:
     build:
       context: ./backend
-      dockerfile: Dockerfile.seed
+      dockerfile: Dockerfile
     container_name: flowforge-backend-seed
+    command: ["./seed"]
     environment:
       POSTGRES_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
     depends_on:
