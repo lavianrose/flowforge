@@ -62,3 +62,10 @@ logs/
 
 # Claude Code
 .claude/
+
+# Node.js (should not exist in Go backend, but just in case)
+node_modules/
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
