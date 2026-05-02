@@ -16,6 +16,9 @@ RUN --mount=type=cache,target=/go/pkg-mod \
 # Copy source code
 COPY . .
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh .
+
 # Build all binaries
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
     go build \
@@ -66,6 +69,10 @@ COPY --from=builder --chown=appuser:appuser /app/migrate .
 COPY --from=builder --chown=appuser:appuser /app/seed .
 COPY --from=builder --chown=appuser:appuser /app/migrations ./migrations
 
+# Copy entrypoint script and make executable
+COPY --from=builder --chown=appuser:appuser /app/docker-entrypoint.sh .
+RUN chmod +x /app/docker-entrypoint.sh
+
 # Switch to non-root user
 USER appuser
 
@@ -76,5 +83,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Default to running API
-CMD ["./api"]
+# Run entrypoint script (migrate → seed → api)
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
