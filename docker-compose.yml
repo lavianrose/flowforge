@@ -43,6 +43,18 @@ services:
         condition: service_healthy
     restart: "no"
 
+  backend-seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.seed
+    container_name: flowforge-backend-seed
+    environment:
+      POSTGRES_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
+    depends_on:
+      backend-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   backend:
     build:
       context: ./backend
@@ -62,6 +74,8 @@ services:
       redis:
         condition: service_healthy
       backend-migrate:
+        condition: service_completed_successfully
+      backend-seed:
         condition: service_completed_successfully
     restart: unless-stopped
 
