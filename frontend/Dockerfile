@@ -42,7 +42,7 @@ RUN --mount=type=cache,target=/root/.npm \
 
 # Copy built assets from builder
 COPY --from=builder --chown=appuser:appuser /app/.next/standalone ./
-COPY --from=builder --chown=appuser:appuser /app/.next/static ./.next/static
+COPY --from=builder --chown=appuser:appuser /app/.next/static ./static
 COPY --from=builder --chown=appuser:appuser /app/public ./public
 
 # Switch to non-root user
