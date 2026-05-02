@@ -13,7 +13,6 @@ RUN --mount=type=cache,target=/root/.npm \
 # Copy source code and config
 COPY next.config.ts ./
 COPY tsconfig.json ./
-COPY .npmrc ./
 
 # Copy public assets
 COPY public ./public
