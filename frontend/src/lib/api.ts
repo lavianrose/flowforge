@@ -71,7 +71,7 @@ export interface HealthStats {
   }>;
 }
 
-class APIClient {
+export class APIClient {
   private token: string | null = null;
 
   setToken(token: string) {
