@@ -50,7 +50,7 @@ type WorkflowRun struct {
 	WorkflowID  string     `json:"workflow_id" db:"workflow_id"`
 	TenantID    string     `json:"tenant_id" db:"tenant_id"`
 	Status      string     `json:"status" db:"status"` // pending, running, success, failed, cancelled
-	Error       string     `json:"error,omitempty" db:"error"`
+	Error       *string    `json:"error,omitempty" db:"error"`
 	StartedAt   *time.Time `json:"started_at,omitempty" db:"started_at"`
 	CompletedAt *time.Time `json:"completed_at,omitempty" db:"completed_at"`
 	CreatedBy   *string    `json:"created_by,omitempty" db:"created_by"`
