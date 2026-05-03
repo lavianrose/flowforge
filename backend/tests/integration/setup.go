@@ -2,17 +2,16 @@ package integration
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lavianrose/flowforge/internal/auth"
 	"github.com/lavianrose/flowforge/internal/config"
 	"github.com/lavianrose/flowforge/internal/db"
+	"github.com/lavianrose/flowforge/internal/migrate"
 	"github.com/lavianrose/flowforge/internal/server"
 )
 
@@ -41,8 +40,8 @@ func Setup(t *testing.T) *TestSuite {
 		t.Fatalf("Failed to initialize database: %v", err)
 	}
 
-	// Create test database schema
-	if err := runMigrations(t, cfg.PostgresURL); err != nil {
+	// Run migrations using actual migration files
+	if err := migrate.Up(); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 
@@ -202,148 +201,4 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
-}
-
-func runMigrations(t *testing.T, dbURL string) error {
-	// For integration tests, we'll run the actual migration files
-	// This is a simplified version - in production you'd use the migrate package
-	ctx := context.Background()
-
-	// Parse connection string
-	cfg, err := pgxpool.ParseConfig(dbURL)
-	if err != nil {
-		return fmt.Errorf("failed to parse db config: %w", err)
-	}
-
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create connection pool: %w", err)
-	}
-	defer pool.Close()
-
-	// Wait for database to be ready
-	for i := 0; i < 10; i++ {
-		if err := pool.Ping(ctx); err == nil {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-
-	// Run schema creation
-	_, err = pool.Exec(ctx, `
-		CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-		CREATE TABLE IF NOT EXISTS tenants (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			name VARCHAR(255) NOT NULL,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS users (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-			email VARCHAR(255) NOT NULL UNIQUE,
-			password_hash VARCHAR(255) NOT NULL,
-			role VARCHAR(50) NOT NULL DEFAULT 'viewer',
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			UNIQUE(tenant_id, email)
-		);
-
-		CREATE TABLE IF NOT EXISTS workflows (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-			name VARCHAR(255) NOT NULL,
-			description TEXT,
-			definition JSONB NOT NULL,
-			timeout_seconds INTEGER NOT NULL DEFAULT 300,
-			active BOOLEAN DEFAULT true,
-			created_by UUID NOT NULL REFERENCES users(id),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS workflow_versions (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-			version INTEGER NOT NULL,
-			definition JSONB NOT NULL,
-			created_by UUID NOT NULL REFERENCES users(id),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			UNIQUE(workflow_id, version)
-		);
-
-		CREATE TABLE IF NOT EXISTS workflow_runs (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-			tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-			status VARCHAR(50) NOT NULL DEFAULT 'pending',
-			error TEXT,
-			started_at TIMESTAMP,
-			completed_at TIMESTAMP,
-			created_by UUID REFERENCES users(id),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			triggered_by VARCHAR(50) DEFAULT 'manual'
-		);
-
-		CREATE TABLE IF NOT EXISTS workflow_run_steps (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			run_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
-			step_id VARCHAR(255) NOT NULL,
-			status VARCHAR(50) NOT NULL DEFAULT 'pending',
-			input JSONB,
-			output JSONB,
-			error TEXT,
-			retry_count INTEGER DEFAULT 0,
-			started_at TIMESTAMP,
-			completed_at TIMESTAMP,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS workflow_logs (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			run_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
-			step_id VARCHAR(255),
-			level VARCHAR(20) NOT NULL DEFAULT 'info',
-			message TEXT NOT NULL,
-			metadata JSONB,
-			created_at TIMESTAMP NOT NULL DEFAULT NOW()
-		);
-
-		CREATE TABLE IF NOT EXISTS schedules (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-			tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-			cron_expression VARCHAR(100) NOT NULL,
-			active BOOLEAN DEFAULT true,
-			next_run_at TIMESTAMP NOT NULL,
-			last_run_at TIMESTAMP,
-			created_by UUID NOT NULL REFERENCES users(id),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			UNIQUE(workflow_id, tenant_id)
-		);
-
-		CREATE TABLE IF NOT EXISTS webhooks (
-			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-			workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
-			tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-			path VARCHAR(255) NOT NULL UNIQUE,
-			secret VARCHAR(255) NOT NULL,
-			active BOOLEAN DEFAULT true,
-			created_by UUID NOT NULL REFERENCES users(id),
-			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_workflow_logs_run_id ON workflow_logs(run_id);
-		CREATE INDEX IF NOT EXISTS idx_workflow_logs_created_at ON workflow_logs(created_at);
-	`)
-
-	if err != nil {
-		return fmt.Errorf("failed to create tables: %w", err)
-	}
-
-	return nil
 }
