@@ -90,38 +90,38 @@ Always complete highest priority unfinished item first.
 - **Viewer**: viewer@flowforge.local / viewer123 (read-only)
 
 #### Frontend Permission Tests
-- [ ] Login with admin user
-  - [ ] Verify role badge shows "Admin" in red
-  - [ ] Verify "Create Workflow" button is visible
-  - [ ] Verify "Run" button is visible on workflow cards
-  - [ ] Verify "Edit Workflow" button is visible
-  - [ ] Verify "Delete" button is visible
-  - [ ] Create a new workflow successfully
-  - [ ] Edit an existing workflow successfully
-  - [ ] Trigger a workflow successfully
-  - [ ] Delete a workflow successfully
+- [x] Login with admin user
+  - [x] Verify role badge shows "Admin" in red
+  - [x] Verify "Create Workflow" button is visible
+  - [x] Verify "Run" button is visible on workflow cards
+  - [x] Verify "Edit Workflow" button is visible
+  - [x] Verify "Delete" button is visible
+  - [x] Create a new workflow successfully
+  - [x] Edit an existing workflow successfully
+  - [x] Trigger a workflow successfully
+  - [x] Delete a workflow successfully
 
-- [ ] Login with editor user
-  - [ ] Verify role badge shows "Editor" in blue
-  - [ ] Verify "Create Workflow" button is visible
-  - [ ] Verify "Run" button is visible on workflow cards
-  - [ ] Verify "Edit Workflow" button is visible
-  - [ ] Verify "Delete" button is NOT visible
-  - [ ] Create a new workflow successfully
-  - [ ] Edit an existing workflow successfully
-  - [ ] Trigger a workflow successfully
-  - [ ] Attempt to delete workflow → button hidden
+- [x] Login with editor user
+  - [x] Verify role badge shows "Editor" in blue
+  - [x] Verify "Create Workflow" button is visible
+  - [x] Verify "Run" button is visible on workflow cards
+  - [x] Verify "Edit Workflow" button is visible
+  - [x] Verify "Delete" button is NOT visible
+  - [x] Create a new workflow successfully
+  - [x] Edit an existing workflow successfully
+  - [x] Trigger a workflow successfully
+  - [x] Attempt to delete workflow → button hidden
 
-- [ ] Login with viewer user
-  - [ ] Verify role badge shows "Viewer" in gray
-  - [ ] Verify "Create Workflow" button is NOT visible
-  - [ ] Verify "Run" button is NOT visible on workflow cards
-  - [ ] Verify "Edit Workflow" button is NOT visible
-  - [ ] Verify "Delete" button is NOT visible
-  - [ ] View workflow list successfully
-  - [ ] View workflow details successfully
-  - [ ] View run history successfully
-  - [ ] Attempt to access /dashboard/workflows/new → redirected
+- [x] Login with viewer user
+  - [x] Verify role badge shows "Viewer" in gray
+  - [x] Verify "Create Workflow" button is NOT visible
+  - [x] Verify "Run" button is NOT visible on workflow cards
+  - [x] Verify "Edit Workflow" button is NOT visible
+  - [x] Verify "Delete" button is NOT visible
+  - [x] View workflow list successfully
+  - [x] View workflow details successfully
+  - [x] View run history successfully
+  - [x] Attempt to access /dashboard/workflows/new → redirected
 
 #### Backend API Permission Tests
 - [x] Test Viewer permissions
@@ -157,11 +157,11 @@ Always complete highest priority unfinished item first.
 - [x] Test malformed Authorization header → 401 Unauthorized
 
 #### UI/UX Tests
-- [ ] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
-- [ ] Verify smooth hiding/showing of buttons based on permissions
-- [ ] Verify no console errors during permission checks
-- [ ] Verify loading states work correctly
-- [ ] Verify error messages display properly
+- [x] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
+- [x] Verify smooth hiding/showing of buttons based on permissions
+- [x] Verify no console errors during permission checks
+- [x] Verify loading states work correctly
+- [x] Verify error messages display properly
 
 #### Integration Tests (Manual)
 - [ ] Create workflow as Admin
