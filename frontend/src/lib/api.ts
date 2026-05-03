@@ -54,6 +54,28 @@ export interface WorkflowRun {
   triggered_by: string;
 }
 
+export interface WorkflowVersion {
+  id: string;
+  workflow_id: string;
+  version: number;
+  definition: {
+    nodes: Array<{
+      id: string;
+      type: string;
+      name: string;
+      config: Record<string, unknown>;
+      position: { x: number; y: number };
+    }>;
+    edges: Array<{
+      id: string;
+      source: string;
+      target: string;
+    }>;
+  };
+  created_by: string;
+  created_at: string;
+}
+
 export interface HealthStats {
   active_runs: number;
   success_rate: number;
@@ -152,6 +174,16 @@ export class APIClient {
 
   async triggerWorkflow(id: string): Promise<WorkflowRun> {
     return this.request(`/workflows/${id}/trigger`, {
+      method: 'POST',
+    });
+  }
+
+  async getWorkflowVersions(id: string): Promise<{ versions: WorkflowVersion[] }> {
+    return this.request(`/workflows/${id}/versions`);
+  }
+
+  async rollbackWorkflow(id: string, version: number): Promise<Workflow> {
+    return this.request(`/workflows/${id}/rollback/${version}`, {
       method: 'POST',
     });
   }
