@@ -157,11 +157,11 @@ Always complete highest priority unfinished item first.
 - [x] Test malformed Authorization header → 401 Unauthorized
 
 #### UI/UX Tests
-- [ ] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
-- [ ] Verify smooth hiding/showing of buttons based on permissions
-- [ ] Verify no console errors during permission checks
-- [ ] Verify loading states work correctly
-- [ ] Verify error messages display properly
+- [x] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
+- [x] Verify smooth hiding/showing of buttons based on permissions
+- [x] Verify no console errors during permission checks
+- [x] Verify loading states work correctly
+- [x] Verify error messages display properly
 
 #### Integration Tests (Manual)
 - [ ] Create workflow as Admin
