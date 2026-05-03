@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const { data: stats, isLoading, error, refetch } = useHealthStats();
 
   // Prepare chart data
-  const chartData = stats?.hourly_stats.map((stat) => ({
+  const chartData = stats?.hourly_stats?.map((stat) => ({
     hour: `${stat.hour}:00`,
     total: stat.total_runs,
     success: stat.success_runs,
@@ -85,7 +85,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-500">Success Rate</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats?.success_rate.toFixed(1)}%
+                {(stats?.success_rate ?? 0).toFixed(1)}%
               </p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
@@ -103,7 +103,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-500">Failure Rate</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats?.failure_rate.toFixed(1)}%
+                {(stats?.failure_rate ?? 0).toFixed(1)}%
               </p>
             </div>
             <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
@@ -121,7 +121,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-sm font-medium text-gray-500">Avg Duration</p>
               <p className="text-3xl font-bold text-gray-900 mt-2">
-                {stats?.avg_duration_seconds.toFixed(1)}s
+                {(stats?.avg_duration_seconds ?? 0).toFixed(1)}s
               </p>
             </div>
             <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
