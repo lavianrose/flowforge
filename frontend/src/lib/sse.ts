@@ -6,11 +6,14 @@ export interface SSEMessage {
 export function connectSSE(
   url: string,
   onMessage: (message: SSEMessage) => void,
-  onError?: (error: Error) => void
+  onError?: (error: Error) => void,
+  token?: string | null
 ): () => void {
-  const eventSource = new EventSource(url, {
-    withCredentials: true,
-  });
+  // EventSource cannot send custom headers, so pass token as query param
+  const sep = url.includes("?") ? "&" : "?";
+  const sseUrl = token ? `${url}${sep}token=${encodeURIComponent(token)}` : url;
+
+  const eventSource = new EventSource(sseUrl);
 
   eventSource.onopen = () => {
     console.log("SSE connection opened");
@@ -44,7 +47,7 @@ export function connectSSE(
     }
   });
 
-  eventSource.addEventListener("error", (e) => {
+  eventSource.addEventListener("error", (_e) => {
     const error = new Error("SSE connection error");
     if (onError) {
       onError(error);

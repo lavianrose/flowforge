@@ -17,17 +17,25 @@ func NewAuthMiddleware(jwtManager *auth.JWTManager) *AuthMiddleware {
 
 func (m *AuthMiddleware) Auth() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		token := ""
+
+		// Try Authorization header first
 		authHeader := c.Get("Authorization")
-		if authHeader == "" {
-			return c.Status(401).JSON(fiber.Map{"error": "Missing authorization header"})
+		if authHeader != "" {
+			parts := strings.Split(authHeader, " ")
+			if len(parts) == 2 && parts[0] == "Bearer" {
+				token = parts[1]
+			}
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			return c.Status(401).JSON(fiber.Map{"error": "Invalid authorization header"})
+		// Fallback to query parameter (needed for SSE/EventSource which can't set headers)
+		if token == "" {
+			token = c.Query("token")
 		}
 
-		token := parts[1]
+		if token == "" {
+			return c.Status(401).JSON(fiber.Map{"error": "Missing authorization"})
+		}
 
 		claims, err := m.jwtManager.Validate(token)
 		if err != nil {

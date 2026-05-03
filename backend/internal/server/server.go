@@ -96,7 +96,14 @@ func (s *Server) Setup() {
 	// Middleware
 	s.app.Use(logger.New())
 	s.app.Use(recover.New())
-	s.app.Use(cors.New())
+	s.app.Use(cors.New(cors.Config{
+		AllowOriginsFunc: func(origin string) bool {
+			return true
+		},
+		AllowCredentials: true,
+		AllowMethods:     "GET,POST,PUT,DELETE,PATCH,HEAD,OPTIONS",
+		AllowHeaders:     "Origin,Content-Type,Accept,Authorization",
+	}))
 
 	// Health check
 	s.app.Get("/health", func(c *fiber.Ctx) error {

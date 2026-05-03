@@ -58,7 +58,6 @@ func (h *RunHandler) StreamRun(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
-	c.Set("Access-Control-Allow-Origin", "*")
 
 	// Send initial state
 	h.sendEvent(c, "run_state", run)
