@@ -298,6 +298,16 @@ func runMigrations(t *testing.T, dbURL string) error {
 			created_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);
 
+		CREATE TABLE IF NOT EXISTS workflow_logs (
+			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+			run_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
+			step_id VARCHAR(255),
+			level VARCHAR(20) NOT NULL DEFAULT 'info',
+			message TEXT NOT NULL,
+			metadata JSONB,
+			created_at TIMESTAMP NOT NULL DEFAULT NOW()
+		);
+
 		CREATE TABLE IF NOT EXISTS schedules (
 			id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
 			workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
@@ -323,6 +333,9 @@ func runMigrations(t *testing.T, dbURL string) error {
 			created_at TIMESTAMP NOT NULL DEFAULT NOW(),
 			updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 		);
+
+		CREATE INDEX IF NOT EXISTS idx_workflow_logs_run_id ON workflow_logs(run_id);
+		CREATE INDEX IF NOT EXISTS idx_workflow_logs_created_at ON workflow_logs(created_at);
 	`)
 
 	if err != nil {
