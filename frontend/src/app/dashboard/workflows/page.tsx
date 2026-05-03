@@ -3,10 +3,12 @@
 import { useWorkflows, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { useSnackbar } from '@/components/Snackbar';
 
 export default function WorkflowsPage() {
   const router = useRouter();
   const { can } = useAuth();
+  const { showSnackbar } = useSnackbar();
   const { data: workflows, isLoading, error } = useWorkflows();
   const deleteMutation = useDeleteWorkflow();
   const triggerMutation = useTriggerWorkflow();
@@ -18,17 +20,18 @@ export default function WorkflowsPage() {
 
     try {
       await deleteMutation.mutateAsync(id);
+      showSnackbar('Workflow deleted successfully', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to delete workflow', 'error');
     }
   };
 
   const handleTrigger = async (id: string) => {
     try {
       await triggerMutation.mutateAsync(id);
-      alert('Workflow triggered successfully');
+      showSnackbar('Workflow triggered successfully', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to trigger workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to trigger workflow', 'error');
     }
   };
 

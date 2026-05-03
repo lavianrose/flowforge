@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
 import { useAuth } from '@/lib/auth';
+import { useSnackbar } from '@/components/Snackbar';
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { nodeTypes } from '@/lib/nodeTypes';
@@ -12,6 +13,7 @@ export default function WorkflowDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { can } = useAuth();
+  const { showSnackbar } = useSnackbar();
   const { data: workflow, isLoading, error } = useWorkflow(params.id as string);
   const deleteMutation = useDeleteWorkflow();
   const triggerMutation = useTriggerWorkflow();
@@ -42,9 +44,10 @@ export default function WorkflowDetailPage() {
 
     try {
       await deleteMutation.mutateAsync(workflow.id);
+      showSnackbar('Workflow deleted successfully', 'success');
       router.push('/dashboard/workflows');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to delete workflow', 'error');
     }
   };
 
@@ -53,9 +56,9 @@ export default function WorkflowDetailPage() {
 
     try {
       await triggerMutation.mutateAsync(workflow.id);
-      alert('Workflow triggered successfully');
+      showSnackbar('Workflow triggered successfully', 'success');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to trigger workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to trigger workflow', 'error');
     }
   };
 

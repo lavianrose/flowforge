@@ -18,6 +18,7 @@ import 'reactflow/dist/style.css';
 import { api, Workflow } from '@/lib/api';
 import { nodeTypes } from '@/lib/nodeTypes';
 import NodeConfigPanel from '@/components/nodes/NodeConfigPanel';
+import { useSnackbar } from '@/components/Snackbar';
 
 const getDefaultConfig = (type: string) => {
   switch (type) {
@@ -45,6 +46,7 @@ export default function EditWorkflowPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const { showSnackbar } = useSnackbar();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
@@ -82,7 +84,7 @@ export default function EditWorkflowPage() {
       setNodes(flowNodes);
       setEdges(flowEdges);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to load workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to load workflow', 'error');
       router.push('/dashboard');
     } finally {
       setLoading(false);
@@ -139,12 +141,12 @@ export default function EditWorkflowPage() {
     if (!workflow) return;
 
     if (!workflowName.trim()) {
-      alert('Please enter a workflow name');
+      showSnackbar('Please enter a workflow name', 'warning');
       return;
     }
 
     if (nodes.length === 0) {
-      alert('Please add at least one node');
+      showSnackbar('Please add at least one node', 'warning');
       return;
     }
 
@@ -174,7 +176,7 @@ export default function EditWorkflowPage() {
 
       router.push(`/dashboard/workflows/${workflow.id}`);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to update workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to update workflow', 'error');
     } finally {
       setSaving(false);
     }
