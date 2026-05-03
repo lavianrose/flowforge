@@ -2,6 +2,7 @@
 
 import { useWorkflowVersions, useRollbackWorkflow } from '@/lib/hooks';
 import { WorkflowVersion } from '@/lib/api';
+import { useSnackbar } from '@/components/Snackbar';
 
 interface VersionHistoryProps {
   workflowId: string;
@@ -10,6 +11,7 @@ interface VersionHistoryProps {
 export default function VersionHistory({ workflowId }: VersionHistoryProps) {
   const { data: versions, isLoading, error } = useWorkflowVersions(workflowId);
   const rollbackMutation = useRollbackWorkflow();
+  const { showSnackbar } = useSnackbar();
 
   const handleRollback = async (version: number) => {
     if (!confirm(`Are you sure you want to rollback to version ${version}? This will create a new version with the old definition.`)) {
@@ -18,10 +20,10 @@ export default function VersionHistory({ workflowId }: VersionHistoryProps) {
 
     try {
       await rollbackMutation.mutateAsync({ id: workflowId, version });
-      alert(`Successfully rolled back to version ${version}`);
+      showSnackbar(`Successfully rolled back to version ${version}`, 'success');
       window.location.reload();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to rollback workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to rollback workflow', 'error');
     }
   };
 
