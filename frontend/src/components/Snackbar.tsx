@@ -69,7 +69,7 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
               onClick={() => dismiss(item.id)}
               className="text-white/70 hover:text-white ml-2 flex-shrink-0"
             >
-              \u00d7
+              ×
             </button>
           </div>
         ))}
