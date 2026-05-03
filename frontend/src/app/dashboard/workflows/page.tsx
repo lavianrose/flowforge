@@ -2,9 +2,11 @@
 
 import { useWorkflows, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth';
 
 export default function WorkflowsPage() {
   const router = useRouter();
+  const { can } = useAuth();
   const { data: workflows, isLoading, error } = useWorkflows();
   const deleteMutation = useDeleteWorkflow();
   const triggerMutation = useTriggerWorkflow();
@@ -51,23 +53,27 @@ export default function WorkflowsPage() {
             Manage and monitor your automation workflows
           </p>
         </div>
-        <button
-          onClick={() => router.push('/dashboard/workflows/new')}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          Create Workflow
-        </button>
+        {can('create') && (
+          <button
+            onClick={() => router.push('/dashboard/workflows/new')}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Create Workflow
+          </button>
+        )}
       </div>
 
       {!workflows || workflows.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow">
           <p className="text-gray-500 mb-4">No workflows found</p>
-          <button
-            onClick={() => router.push('/dashboard/workflows/new')}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-          >
-            Create Your First Workflow
-          </button>
+          {can('create') && (
+            <button
+              onClick={() => router.push('/dashboard/workflows/new')}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            >
+              Create Your First Workflow
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -99,23 +105,27 @@ export default function WorkflowsPage() {
                 >
                   View
                 </button>
-                <button
-                  onClick={() => handleTrigger(workflow.id)}
-                  className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
-                  disabled={triggerMutation.isPending}
-                >
-                  {triggerMutation.isPending ? 'Running...' : 'Run'}
-                </button>
+                {can('trigger') && (
+                  <button
+                    onClick={() => handleTrigger(workflow.id)}
+                    className="flex-1 px-3 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                    disabled={triggerMutation.isPending}
+                  >
+                    {triggerMutation.isPending ? 'Running...' : 'Run'}
+                  </button>
+                )}
               </div>
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <button
-                  onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
-                  className="w-full px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                  disabled={triggerMutation.isPending}
-                >
-                  Edit Workflow
-                </button>
-              </div>
+              {can('edit') && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
+                    className="w-full px-3 py-2 text-sm font-medium text-gray-700 bg-gray-50 rounded-md hover:bg-gray-100 disabled:opacity-50"
+                    disabled={triggerMutation.isPending}
+                  >
+                    Edit Workflow
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

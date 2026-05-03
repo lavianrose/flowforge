@@ -16,6 +16,7 @@ interface AuthContextType {
   login: (data: LoginRequest) => Promise<void>;
   logout: () => void;
   loading: boolean;
+  can: (action: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,8 +68,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('token');
   };
 
+  const can = (action: string): boolean => {
+    if (!user) return false;
+
+    const role = user.role;
+
+    switch (action) {
+      case 'view':
+        return true;
+      case 'create':
+      case 'edit':
+      case 'trigger':
+      case 'rollback':
+        return role === 'editor' || role === 'admin';
+      case 'delete':
+        return role === 'admin';
+      default:
+        return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, can }}>
       {children}
     </AuthContext.Provider>
   );

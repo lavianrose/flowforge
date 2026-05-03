@@ -2,6 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
+import { useAuth } from '@/lib/auth';
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { nodeTypes } from '@/lib/nodeTypes';
@@ -10,6 +11,7 @@ import VersionHistory from '@/components/VersionHistory';
 export default function WorkflowDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { can } = useAuth();
   const { data: workflow, isLoading, error } = useWorkflow(params.id as string);
   const deleteMutation = useDeleteWorkflow();
   const triggerMutation = useTriggerWorkflow();
@@ -83,20 +85,24 @@ export default function WorkflowDetailPage() {
           >
             Back
           </button>
-          <button
-            onClick={handleTrigger}
-            disabled={triggerMutation.isPending}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-          >
-            {triggerMutation.isPending ? 'Running...' : 'Run Workflow'}
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleteMutation.isPending}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
-          >
-            {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-          </button>
+          {can('trigger') && (
+            <button
+              onClick={handleTrigger}
+              disabled={triggerMutation.isPending}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+            >
+              {triggerMutation.isPending ? 'Running...' : 'Run Workflow'}
+            </button>
+          )}
+          {can('delete') && (
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -214,14 +220,16 @@ export default function WorkflowDetailPage() {
       </div>
 
       {/* Edit Workflow Button */}
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          Edit Workflow
-        </button>
-      </div>
+      {can('edit') && (
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Edit Workflow
+          </button>
+        </div>
+      )}
     </div>
   );
 }

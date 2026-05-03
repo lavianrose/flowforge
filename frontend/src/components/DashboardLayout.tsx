@@ -43,6 +43,17 @@ export default function DashboardLayout({
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-700">{user.email}</span>
+              <span
+                className={`px-2 py-1 text-xs font-medium rounded ${
+                  user.role === 'admin'
+                    ? 'bg-red-100 text-red-800'
+                    : user.role === 'editor'
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}
+              >
+                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+              </span>
               <button
                 onClick={logout}
                 className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
