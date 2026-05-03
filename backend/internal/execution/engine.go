@@ -205,9 +205,9 @@ func (e *Engine) executeNodeLogic(ctx context.Context, node *models.WorkflowNode
 func (e *Engine) failRun(ctx context.Context, run *models.WorkflowRun, errorMsg string) {
 	now := time.Now()
 	run.Status = "failed"
-	run.Error = errorMsg
+	run.Error = &errorMsg
 	run.CompletedAt = &now
-	if err := e.runRepo.UpdateStatus(ctx, run.ID, run.Status, &run.Error, nil, &run.CompletedAt); err != nil {
+	if err := e.runRepo.UpdateStatus(ctx, run.ID, run.Status, run.Error, nil, &run.CompletedAt); err != nil {
 		fmt.Printf("Failed to update run status: %v\n", err)
 	}
 }
