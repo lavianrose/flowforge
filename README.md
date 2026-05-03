@@ -15,6 +15,7 @@ Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitH
 - **Webhooks**: HTTP-based triggers with HMAC signature verification
 - **Rate Limiting**: Redis-based sliding window rate limiter
 - **Health Dashboard**: 24-hour statistics with trend charts
+- **Graceful Shutdown**: Proper server shutdown with signal handling and resource cleanup
 - **Caching**: React Query with stale-while-revalidate strategy
 
 ## Tech Stack
@@ -274,7 +275,7 @@ flowforge/
 │   │   ├── models/         # Data models
 │   │   ├── repository/     # Database access
 │   │   ├── scheduler/      # Cron job scheduler
-│   │   ├── server/         # Fiber server & routing
+│   │   ├── server/         # Fiber server & routing with graceful shutdown
 │   │   └── validator/      # Input validation
 │   ├── migrations/         # SQL migrations
 │   └── tests/              # Integration tests

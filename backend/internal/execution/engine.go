@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -17,17 +18,29 @@ import (
 	"github.com/lavianrose/flowforge/internal/repository"
 )
 
+const (
+	defaultNodeRetryCount = 3
+	baseRetryDelay        = 500 * time.Millisecond
+)
+
+type RunRepository interface {
+	Create(ctx context.Context, run *models.WorkflowRun) error
+	UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error
+	CreateStep(ctx context.Context, step *models.WorkflowRunStep) error
+	UpdateStep(ctx context.Context, step *models.WorkflowRunStep) error
+}
+
 type Engine struct {
-	runRepo    *repository.RunRepository
+	runRepo      RunRepository
 	workflowRepo *repository.WorkflowRepository
-	validator  *dag.Validator
+	validator    *dag.Validator
 }
 
 func NewEngine(runRepo *repository.RunRepository, workflowRepo *repository.WorkflowRepository) *Engine {
 	return &Engine{
-		runRepo:    runRepo,
+		runRepo:      runRepo,
 		workflowRepo: workflowRepo,
-		validator:  dag.NewValidator(),
+		validator:    dag.NewValidator(),
 	}
 }
 
@@ -62,6 +75,13 @@ func (e *Engine) Execute(ctx context.Context, workflowID, tenantID string, trigg
 }
 
 func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow, run *models.WorkflowRun) {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("Panic in executeWorkflow: %v\n", r)
+			e.failRun(context.Background(), run, fmt.Sprintf("Execution panicked: %v", r))
+		}
+	}()
+
 	// Set timeout
 	timeout := time.Duration(workflow.TimeoutSecs) * time.Second
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -167,32 +187,65 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 		return
 	}
 
-	// Execute based on type
-	output, err := e.executeNodeLogic(ctx, node, inputsCopy)
-	if err != nil {
-		step.Status = "failed"
+	for attempt := 0; attempt < defaultNodeRetryCount; attempt++ {
+		output, err := e.executeNodeLogic(ctx, node, inputsCopy)
+		if err == nil {
+			step.Status = "success"
+			step.Output = output
+			now = time.Now()
+			step.CompletedAt = &now
+			if err := e.runRepo.UpdateStep(ctx, step); err != nil {
+				errChan <- fmt.Errorf("failed to update step: %w", err)
+				return
+			}
+
+			outputsMu.Lock()
+			outputs[nodeID] = output
+			outputsMu.Unlock()
+			return
+		}
+
+		step.RetryCount = attempt + 1
 		step.Error = err.Error()
+
+		if err := e.runRepo.UpdateStep(ctx, step); err != nil {
+			errChan <- fmt.Errorf("failed to update step retry metadata: %w", err)
+			return
+		}
+
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			step.Status = "failed"
+			now = time.Now()
+			step.CompletedAt = &now
+			e.runRepo.UpdateStep(ctx, step)
+			errChan <- err
+			return
+		}
+
+		if attempt < defaultNodeRetryCount-1 {
+			select {
+			case <-time.After(time.Duration(1<<attempt) * baseRetryDelay):
+			case <-ctx.Done():
+				step.Status = "failed"
+				now = time.Now()
+				step.CompletedAt = &now
+				e.runRepo.UpdateStep(ctx, step)
+				errChan <- ctx.Err()
+				return
+			}
+			continue
+		}
+
+		step.Status = "failed"
 		now = time.Now()
 		step.CompletedAt = &now
-		e.runRepo.UpdateStep(ctx, step)
+		if err := e.runRepo.UpdateStep(ctx, step); err != nil {
+			errChan <- fmt.Errorf("failed to update step: %w", err)
+			return
+		}
 		errChan <- err
 		return
 	}
-
-	// Update step to success
-	step.Status = "success"
-	step.Output = output
-	now = time.Now()
-	step.CompletedAt = &now
-	if err := e.runRepo.UpdateStep(ctx, step); err != nil {
-		errChan <- fmt.Errorf("failed to update step: %w", err)
-		return
-	}
-
-	// Store output for next nodes (thread-safe)
-	outputsMu.Lock()
-	outputs[nodeID] = output
-	outputsMu.Unlock()
 }
 
 func (e *Engine) executeNodeLogic(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
@@ -310,6 +363,7 @@ func (e *Engine) executeHTTP(ctx context.Context, node *models.WorkflowNode, inp
 
 	if resp.StatusCode >= 400 {
 		result["error"] = fmt.Sprintf("HTTP request returned status %d", resp.StatusCode)
+		return result, fmt.Errorf("http node: request failed with status %d", resp.StatusCode)
 	}
 
 	return result, nil

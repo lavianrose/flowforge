@@ -75,10 +75,10 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req struct {
-		Name        string                 `json:"name"`
-		Description string                 `json:"description"`
-		Definition  interface{}            `json:"definition"`
-		TimeoutSecs int                    `json:"timeout_seconds"`
+		Name        string      `json:"name"`
+		Description string      `json:"description"`
+		Definition  interface{} `json:"definition"`
+		TimeoutSecs int         `json:"timeout_seconds"`
 	}
 
 	if err := c.BodyParser(&req); err != nil {
@@ -141,7 +141,7 @@ func (h *WorkflowHandler) CreateWorkflow(c *fiber.Ctx) error {
 	}
 
 	if err := h.workflowRepo.Create(c.Context(), workflow); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "Failed to create workflow"})
+		return c.Status(500).JSON(fiber.Map{"error": fmt.Sprintf("Failed to create workflow: %s", err.Error())})
 	}
 
 	return c.Status(201).JSON(workflow)

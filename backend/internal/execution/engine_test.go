@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -56,7 +57,7 @@ func TestResolveTemplate_NestedPath(t *testing.T) {
 	inputs := map[string]interface{}{
 		"node1": map[string]interface{}{
 			"json": map[string]interface{}{
-				"name": "test",
+				"name":  "test",
 				"count": float64(5),
 			},
 		},
@@ -447,7 +448,8 @@ func TestExecuteHTTP_ErrorStatus(t *testing.T) {
 	}
 
 	output, err := e.executeHTTP(context.Background(), node, nil)
-	require.NoError(t, err) // HTTP errors don't return Go errors
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed with status 500")
 	assert.Equal(t, 500, output["status_code"])
 	assert.Contains(t, output["error"], "500")
 }
@@ -648,6 +650,144 @@ func TestExecuteCondition_GreaterThan(t *testing.T) {
 	output, err := e.executeCondition(context.Background(), node, inputs)
 	require.NoError(t, err)
 	assert.Equal(t, true, output["passed"])
+}
+
+type fakeRunRepo struct {
+	steps map[string]*models.WorkflowRunStep
+}
+
+func (r *fakeRunRepo) Create(ctx context.Context, run *models.WorkflowRun) error {
+	return nil
+}
+
+func (r *fakeRunRepo) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error {
+	return nil
+}
+
+func (r *fakeRunRepo) CreateStep(ctx context.Context, step *models.WorkflowRunStep) error {
+	if r.steps == nil {
+		r.steps = make(map[string]*models.WorkflowRunStep)
+	}
+	step.ID = "step-" + step.StepID
+	step.CreatedAt = time.Now()
+	r.steps[step.StepID] = &models.WorkflowRunStep{
+		ID:         step.ID,
+		RunID:      step.RunID,
+		StepID:     step.StepID,
+		Status:     step.Status,
+		Input:      step.Input,
+		RetryCount: step.RetryCount,
+		CreatedAt:  step.CreatedAt,
+	}
+	return nil
+}
+
+func (r *fakeRunRepo) UpdateStep(ctx context.Context, step *models.WorkflowRunStep) error {
+	if r.steps == nil {
+		r.steps = make(map[string]*models.WorkflowRunStep)
+	}
+	copied := *step
+	r.steps[step.StepID] = &copied
+	return nil
+}
+
+func TestExecuteNode_RetriesOnTransientHTTPFailure(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"internal"}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	}))
+	defer server.Close()
+
+	repo := &fakeRunRepo{}
+	e := &Engine{runRepo: repo}
+	workflow := &models.Workflow{
+		Definition: models.WorkflowDef{
+			Nodes: []models.WorkflowNode{{
+				ID:   "http1",
+				Type: "http",
+				Config: map[string]interface{}{
+					"url":    server.URL,
+					"method": "GET",
+				},
+			}},
+		},
+	}
+	run := &models.WorkflowRun{ID: "run1"}
+	outputs := make(map[string]interface{})
+	var outputsMu sync.Mutex
+	var wg sync.WaitGroup
+	errChan := make(chan error, 1)
+
+	wg.Add(1)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, run, "http1", outputs, &outputsMu)
+	wg.Wait()
+	close(errChan)
+
+	var err error
+	for execErr := range errChan {
+		err = execErr
+	}
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, attempts)
+
+	step := repo.steps["http1"]
+	require.NotNil(t, step)
+	assert.Equal(t, "success", step.Status)
+	assert.Equal(t, 1, step.RetryCount)
+	assert.NotNil(t, outputs["http1"])
+}
+
+func TestExecuteNode_ExhaustsRetriesOnPermanentFailure(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"internal"}`))
+	}))
+	defer server.Close()
+
+	repo := &fakeRunRepo{}
+	e := &Engine{runRepo: repo}
+	workflow := &models.Workflow{
+		Definition: models.WorkflowDef{
+			Nodes: []models.WorkflowNode{{
+				ID:   "http1",
+				Type: "http",
+				Config: map[string]interface{}{
+					"url":    server.URL,
+					"method": "GET",
+				},
+			}},
+		},
+	}
+	run := &models.WorkflowRun{ID: "run1"}
+	outputs := make(map[string]interface{})
+	var outputsMu sync.Mutex
+	var wg sync.WaitGroup
+	errChan := make(chan error, 1)
+
+	wg.Add(1)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, run, "http1", outputs, &outputsMu)
+	wg.Wait()
+	close(errChan)
+
+	var err error
+	for execErr := range errChan {
+		err = execErr
+	}
+
+	require.Error(t, err)
+	step := repo.steps["http1"]
+	require.NotNil(t, step)
+	assert.Equal(t, "failed", step.Status)
+	assert.Equal(t, defaultNodeRetryCount, step.RetryCount)
 }
 
 // ---------------------------------------------------------------------------

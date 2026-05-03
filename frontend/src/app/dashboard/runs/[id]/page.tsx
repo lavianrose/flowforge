@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useRun } from '@/lib/hooks';
-import { connectSSE } from '@/lib/sse';
-import { WorkflowRun } from '@/lib/api';
+import { useState, useEffect, useRef } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useRun, useTriggerWorkflow } from "@/lib/hooks";
+import { connectSSE } from "@/lib/sse";
+import { WorkflowRun } from "@/lib/api";
 
 interface Step {
   id: string;
@@ -23,54 +23,70 @@ interface Step {
 export default function RunDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: runData, isLoading, error, refetch } = useRun(params.id as string);
+  const {
+    data: runData,
+    isLoading,
+    error,
+    refetch,
+  } = useRun(params.id as string);
+  const retryMutation = useTriggerWorkflow();
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [run, setRun] = useState(runData?.run || null);
   const [steps, setSteps] = useState<Step[]>(runData?.steps || []);
   const [liveMode, setLiveMode] = useState(false);
+  const [now, setNow] = useState<number>(() => Date.now());
   const cleanupRef = useRef<(() => void) | null>(null);
 
   // Update local state when query data changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (runData) {
       setRun(runData.run);
       setSteps(runData.steps || []);
 
       // Auto-enable live mode if run is still running
-      if (runData.run.status === 'running' || runData.run.status === 'pending') {
+      if (
+        runData.run.status === "running" ||
+        runData.run.status === "pending"
+      ) {
         setLiveMode(true);
       }
     }
   }, [runData]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!liveMode || !run) return;
 
     // Connect to SSE stream
-    const token = localStorage.getItem('token');
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+    const apiUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
     const sseUrl = `${apiUrl}/runs/${params.id}/stream`;
 
     cleanupRef.current = connectSSE(
       sseUrl,
       (message) => {
-        if (message.event === 'run_state') {
+        if (message.event === "run_state") {
           const updatedRun = message.data as WorkflowRun;
           setRun(updatedRun);
 
           // Stop live mode when run completes
           if (
-            updatedRun.status === 'success' ||
-            updatedRun.status === 'failed' ||
-            updatedRun.status === 'cancelled'
+            updatedRun.status === "success" ||
+            updatedRun.status === "failed" ||
+            updatedRun.status === "cancelled"
           ) {
             setLiveMode(false);
           }
+        } else if (message.event === "steps_state") {
+          const updatedSteps = message.data as Step[];
+          setSteps(updatedSteps);
         }
       },
       (err) => {
-        console.error('SSE error:', err);
+        console.error("SSE error:", err);
         setLiveMode(false);
-      }
+      },
     );
 
     return () => {
@@ -80,33 +96,45 @@ export default function RunDetailPage() {
     };
   }, [liveMode, run, params.id]);
 
+  useEffect(() => {
+    if (run?.status !== "running" && run?.status !== "pending") {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [run?.status]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'success':
-        return 'bg-green-100 text-green-800 border-green-300';
-      case 'failed':
-        return 'bg-red-100 text-red-800 border-red-300';
-      case 'running':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+      case "success":
+        return "bg-green-100 text-green-800 border-green-300";
+      case "failed":
+        return "bg-red-100 text-red-800 border-red-300";
+      case "running":
+        return "bg-blue-100 text-blue-800 border-blue-300";
+      case "pending":
+        return "bg-yellow-100 text-yellow-800 border-yellow-300";
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return "bg-gray-100 text-gray-800 border-gray-300";
     }
   };
 
   const getStepIcon = (status: string) => {
     switch (status) {
-      case 'success':
-        return '✅';
-      case 'failed':
-        return '❌';
-      case 'running':
-        return '⏳';
-      case 'pending':
-        return '⏸️';
+      case "success":
+        return "✅";
+      case "failed":
+        return "❌";
+      case "running":
+        return "⏳";
+      case "pending":
+        return "⏸️";
       default:
-        return '❓';
+        return "❓";
     }
   };
 
@@ -121,7 +149,7 @@ export default function RunDetailPage() {
   if (error || !run) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error?.message || 'Run not found'}
+        {error?.message || "Run not found"}
       </div>
     );
   }
@@ -132,8 +160,8 @@ export default function RunDetailPage() {
     started && completed
       ? Math.round((completed.getTime() - started.getTime()) / 1000)
       : started
-      ? Math.round((Date.now() - started.getTime()) / 1000)
-      : null;
+        ? Math.round((now - started.getTime()) / 1000)
+        : null;
 
   return (
     <div>
@@ -148,10 +176,32 @@ export default function RunDetailPage() {
             )}
           </div>
           <p className="text-sm text-gray-600 mt-1">
-            Workflow ID: <span className="font-mono">{run.workflow_id.slice(0, 8)}...</span>
+            Workflow ID:{" "}
+            <span className="font-mono">{run.workflow_id.slice(0, 8)}...</span>
           </p>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
+          {(run.status === "failed" || run.status === "cancelled") && (
+            <button
+              onClick={() => {
+                setRetryError(null);
+                retryMutation.mutate(run.workflow_id, {
+                  onSuccess: (newRun) => {
+                    router.push(`/dashboard/runs/${newRun.id}`);
+                  },
+                  onError: (err) => {
+                    setRetryError(
+                      err instanceof Error ? err.message : "Retry failed",
+                    );
+                  },
+                });
+              }}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+              disabled={retryMutation.isPending}
+            >
+              {retryMutation.isPending ? "Retrying..." : "Retry Workflow"}
+            </button>
+          )}
           <button
             onClick={() => {
               setLiveMode(!liveMode);
@@ -161,12 +211,12 @@ export default function RunDetailPage() {
             }}
             className={`px-4 py-2 rounded-md ${
               liveMode
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
-            disabled={run.status !== 'running' && run.status !== 'pending'}
+            disabled={run.status !== "running" && run.status !== "pending"}
           >
-            {liveMode ? 'Live' : 'Live Updates'}
+            {liveMode ? "Live" : "Live Updates"}
           </button>
           <button
             onClick={() => refetch()}
@@ -183,6 +233,13 @@ export default function RunDetailPage() {
         </div>
       </div>
 
+      {retryError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded">
+          <p className="font-medium">Retry failed</p>
+          <p className="text-sm mt-1">{retryError}</p>
+        </div>
+      )}
+
       {/* Run Info */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h3 className="text-lg font-semibold mb-4">Run Information</h3>
@@ -192,7 +249,7 @@ export default function RunDetailPage() {
             <dd className="mt-1">
               <span
                 className={`px-2 py-1 text-sm font-medium rounded border ${getStatusColor(
-                  run.status
+                  run.status,
                 )}`}
               >
                 {getStepIcon(run.status)} {run.status}
@@ -206,12 +263,14 @@ export default function RunDetailPage() {
           <div>
             <dt className="text-sm font-medium text-gray-500">Started</dt>
             <dd className="mt-1 text-sm text-gray-900">
-              {started?.toLocaleString() || '-'}
+              {started?.toLocaleString() || "-"}
             </dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Duration</dt>
-            <dd className="mt-1 text-sm text-gray-900">{duration ? `${duration}s` : '-'}</dd>
+            <dd className="mt-1 text-sm text-gray-900">
+              {duration ? `${duration}s` : "-"}
+            </dd>
           </div>
         </dl>
 
@@ -241,7 +300,7 @@ export default function RunDetailPage() {
                 <div className="flex-shrink-0">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${getStatusColor(
-                      step.status
+                      step.status,
                     )} border`}
                   >
                     {index + 1}
@@ -255,7 +314,7 @@ export default function RunDetailPage() {
                     <div className="flex items-center gap-2">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded border ${getStatusColor(
-                          step.status
+                          step.status,
                         )}`}
                       >
                         {getStepIcon(step.status)} {step.status}
@@ -293,7 +352,8 @@ export default function RunDetailPage() {
                     )}
                     {step.completed_at && (
                       <span className="ml-4">
-                        Completed: {new Date(step.completed_at).toLocaleString()}
+                        Completed:{" "}
+                        {new Date(step.completed_at).toLocaleString()}
                       </span>
                     )}
                   </div>
