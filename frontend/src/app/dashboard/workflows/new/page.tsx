@@ -160,7 +160,7 @@ export default function NewWorkflowPage() {
         </div>
       </div>
 
-      <div className={`grid gap-4 h-[calc(100%-80px)] ${selectedNode ? 'grid-cols-1 lg:grid-cols-[1fr_2fr_1fr]' : 'grid-cols-1 lg:grid-cols-4'}`}>
+      <div className={`grid gap-4 h-[calc(100%-80px)] ${selectedNode ? 'grid-cols-1 lg:grid-cols-[280px_1fr_300px]' : 'grid-cols-1 lg:grid-cols-[280px_1fr]'}`}>
         {/* Sidebar */}
         <div className="bg-white rounded-lg shadow p-4 overflow-y-auto">
           <h3 className="font-semibold mb-4">Workflow Info</h3>
