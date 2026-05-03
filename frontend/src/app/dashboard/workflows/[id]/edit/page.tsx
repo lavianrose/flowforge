@@ -12,10 +12,27 @@ import ReactFlow, {
   Node,
   useNodesState,
   useEdgesState,
+  NodeMouseHandler,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { api, Workflow } from '@/lib/api';
 import { nodeTypes } from '@/lib/nodeTypes';
+import NodeConfigPanel from '@/components/nodes/NodeConfigPanel';
+
+const getDefaultConfig = (type: string) => {
+  switch (type) {
+    case 'http':
+      return { url: '', method: 'GET', headers: {} };
+    case 'delay':
+      return { seconds: 5 };
+    case 'script':
+      return { code: '' };
+    case 'condition':
+      return { expression: '' };
+    default:
+      return {};
+  }
+};
 
 export default function EditWorkflowPage() {
   const params = useParams();
@@ -27,6 +44,9 @@ export default function EditWorkflowPage() {
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
   useEffect(() => {
     if (params.id) {
@@ -42,7 +62,6 @@ export default function EditWorkflowPage() {
       setWorkflowName(data.name);
       setWorkflowDescription(data.description);
 
-      // Convert backend format to ReactFlow format
       const flowNodes: Node[] = data.definition.nodes.map((node) => ({
         id: node.id,
         type: 'custom',
@@ -75,6 +94,14 @@ export default function EditWorkflowPage() {
     [setEdges]
   );
 
+  const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
+    setSelectedNodeId(node.id);
+  }, []);
+
+  const onPaneClick = useCallback(() => {
+    setSelectedNodeId(null);
+  }, []);
+
   const addNode = useCallback((type: string, label: string) => {
     const newNode: Node = {
       id: `${type}-${Date.now()}`,
@@ -87,22 +114,26 @@ export default function EditWorkflowPage() {
       },
     };
     setNodes((nds) => [...nds, newNode]);
+    setSelectedNodeId(newNode.id);
   }, [setNodes]);
 
-  const getDefaultConfig = (type: string) => {
-    switch (type) {
-      case 'http':
-        return { url: '', method: 'GET', headers: {} };
-      case 'delay':
-        return { seconds: 5 };
-      case 'script':
-        return { code: '' };
-      case 'condition':
-        return { expression: 'true' };
-      default:
-        return {};
-    }
-  };
+  const handleConfigChange = useCallback(
+    (nodeId: string, config: Record<string, unknown>) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, config } } : n))
+      );
+    },
+    [setNodes]
+  );
+
+  const handleLabelChange = useCallback(
+    (nodeId: string, label: string) => {
+      setNodes((nds) =>
+        nds.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, label } } : n))
+      );
+    },
+    [setNodes]
+  );
 
   const handleSave = async () => {
     if (!workflow) return;
@@ -181,9 +212,9 @@ export default function EditWorkflowPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-[calc(100%-80px)]">
+      <div className={`grid gap-4 h-[calc(100%-80px)] ${selectedNode ? 'grid-cols-1 lg:grid-cols-[280px_1fr_300px]' : 'grid-cols-1 lg:grid-cols-[280px_1fr]'}`}>
         {/* Sidebar */}
-        <div className="lg:col-span-1 bg-white rounded-lg shadow p-4 overflow-y-auto">
+        <div className="bg-white rounded-lg shadow p-4 overflow-y-auto">
           <h3 className="font-semibold mb-4">Workflow Info</h3>
           <div className="space-y-3 mb-6">
             <div>
@@ -243,22 +274,24 @@ export default function EditWorkflowPage() {
           <div className="mt-6 text-xs text-gray-500">
             <p className="mb-2">Tips:</p>
             <ul className="list-disc list-inside space-y-1">
+              <li>Click a node to configure it</li>
               <li>Drag nodes to reposition</li>
               <li>Connect from bottom to top</li>
               <li>Delete nodes with Backspace</li>
-              <li>Select node and Delete to remove</li>
             </ul>
           </div>
         </div>
 
         {/* Canvas */}
-        <div className="lg:col-span-3 bg-white rounded-lg shadow">
+        <div className="bg-white rounded-lg shadow">
           <ReactFlow
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={onNodeClick}
+            onPaneClick={onPaneClick}
             nodeTypes={nodeTypes}
             fitView
           >
@@ -267,6 +300,19 @@ export default function EditWorkflowPage() {
             <MiniMap />
           </ReactFlow>
         </div>
+
+        {/* Config Panel */}
+        {selectedNode && (
+          <NodeConfigPanel
+            nodeId={selectedNode.id}
+            nodeType={selectedNode.data.type as string}
+            nodeLabel={selectedNode.data.label as string}
+            config={(selectedNode.data.config as Record<string, unknown>) || {}}
+            onConfigChange={handleConfigChange}
+            onLabelChange={handleLabelChange}
+            onClose={() => setSelectedNodeId(null)}
+          />
+        )}
       </div>
     </div>
   );
