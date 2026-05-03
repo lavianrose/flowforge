@@ -15,6 +15,7 @@ import (
 	"github.com/lavianrose/flowforge/internal/auth"
 	"github.com/lavianrose/flowforge/internal/config"
 	"github.com/lavianrose/flowforge/internal/db"
+	"github.com/lavianrose/flowforge/internal/execution"
 	"github.com/lavianrose/flowforge/internal/handlers"
 	"github.com/lavianrose/flowforge/internal/middleware"
 	"github.com/lavianrose/flowforge/internal/repository"
@@ -34,6 +35,7 @@ type Server struct {
 	webhookHdl  *handlers.WebhookHandler
 	statsHdl    *handlers.StatsHandler
 	scheduler   *scheduler.Scheduler
+	engine      *execution.Engine
 }
 
 func New(cfg *config.Config) *Server {
@@ -57,18 +59,21 @@ func New(cfg *config.Config) *Server {
 	authHdl := handlers.NewAuthHandler(userRepo, jwtMgr)
 	workflowRepo := repository.NewWorkflowRepository(db.Pool)
 	runRepo := repository.NewRunRepository(db.Pool)
-	workflowHdl := handlers.NewWorkflowHandler(workflowRepo, runRepo)
+
+	engine := execution.NewEngine(runRepo, workflowRepo)
+
+	workflowHdl := handlers.NewWorkflowHandler(workflowRepo, runRepo, engine)
 	runHdl := handlers.NewRunHandler(runRepo)
 
 	scheduleRepo := repository.NewScheduleRepository(db.Pool)
 	scheduleHdl := handlers.NewScheduleHandler(scheduleRepo, workflowRepo, runRepo)
 
 	webhookRepo := repository.NewWebhookRepository(db.Pool)
-	webhookHdl := handlers.NewWebhookHandler(webhookRepo, workflowRepo, runRepo)
+	webhookHdl := handlers.NewWebhookHandler(webhookRepo, workflowRepo, runRepo, engine)
 
 	statsHdl := handlers.NewStatsHandler(runRepo)
 
-	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo)
+	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo, engine)
 
 	return &Server{
 		app:         app,
@@ -83,6 +88,7 @@ func New(cfg *config.Config) *Server {
 		webhookHdl:  webhookHdl,
 		statsHdl:    statsHdl,
 		scheduler:   sched,
+		engine:      engine,
 	}
 }
 
@@ -182,6 +188,10 @@ func (s *Server) Start() error {
 	// Stop scheduler
 	s.scheduler.Stop()
 
+	// Wait for in-flight workflow executions to finish
+	fmt.Println("Waiting for in-flight workflow executions to complete...")
+	s.engine.Wait()
+
 	fmt.Println("Server shutdown complete")
 	return nil
 }
@@ -189,4 +199,9 @@ func (s *Server) Start() error {
 // GetApp returns the Fiber app for testing purposes
 func (s *Server) GetApp() *fiber.App {
 	return s.app
+}
+
+// WaitExecutions blocks until all in-flight workflow executions complete.
+func (s *Server) WaitExecutions() {
+	s.engine.Wait()
 }

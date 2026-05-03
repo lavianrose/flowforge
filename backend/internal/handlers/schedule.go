@@ -119,9 +119,8 @@ func NewWebhookHandler(
 	webhookRepo *repository.WebhookRepository,
 	workflowRepo *repository.WorkflowRepository,
 	runRepo *repository.RunRepository,
+	engine *execution.Engine,
 ) *WebhookHandler {
-	engine := execution.NewEngine(runRepo, workflowRepo)
-
 	return &WebhookHandler{
 		webhookRepo:  webhookRepo,
 		workflowRepo: workflowRepo,

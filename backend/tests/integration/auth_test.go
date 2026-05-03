@@ -41,7 +41,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -73,7 +73,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -105,7 +105,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -137,7 +137,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/auth/login", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -149,7 +149,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 
 	t.Run("Missing Authorization Header", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows", nil)
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -163,7 +163,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows", nil)
 		req.Header.Set("Authorization", "Bearer invalid-token")
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -179,7 +179,7 @@ func TestAuthenticationIntegration(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -229,7 +229,7 @@ func TestRBACIntegration(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -266,7 +266,7 @@ func TestRBACIntegration(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -283,7 +283,7 @@ func TestRBACIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/workflows/"+workflowID+"/trigger", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -299,7 +299,7 @@ func TestRBACIntegration(t *testing.T) {
 		req := httptest.NewRequest("POST", "/api/v1/workflows/"+workflowID+"/trigger", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -316,7 +316,7 @@ func TestRBACIntegration(t *testing.T) {
 		req := httptest.NewRequest("DELETE", "/api/v1/workflows/"+workflowID, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -332,7 +332,7 @@ func TestRBACIntegration(t *testing.T) {
 		req := httptest.NewRequest("DELETE", "/api/v1/workflows/"+workflowID, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -366,7 +366,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows/"+workflowAID, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -383,7 +383,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows/"+workflowAID, nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}
@@ -399,7 +399,7 @@ func TestMultiTenantIsolation(t *testing.T) {
 		req := httptest.NewRequest("GET", "/api/v1/workflows", nil)
 		req.Header.Set("Authorization", "Bearer "+token)
 
-		resp, err := ts.Server.GetApp().Test(req)
+		resp, err := ts.DoRequest(req)
 		if err != nil {
 			t.Fatalf("Failed to send request: %v", err)
 		}

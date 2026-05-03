@@ -25,7 +25,7 @@ const (
 
 type RunRepository interface {
 	Create(ctx context.Context, run *models.WorkflowRun) error
-	UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error
+	UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt *time.Time) error
 	CreateStep(ctx context.Context, step *models.WorkflowRunStep) error
 	UpdateStep(ctx context.Context, step *models.WorkflowRunStep) error
 }
@@ -34,6 +34,7 @@ type Engine struct {
 	runRepo      RunRepository
 	workflowRepo *repository.WorkflowRepository
 	validator    *dag.Validator
+	wg           sync.WaitGroup
 }
 
 func NewEngine(runRepo *repository.RunRepository, workflowRepo *repository.WorkflowRepository) *Engine {
@@ -68,17 +69,23 @@ func (e *Engine) Execute(ctx context.Context, workflowID, tenantID string, trigg
 		return nil, fmt.Errorf("failed to create run: %w", err)
 	}
 
-	// Start execution in background
-	go e.executeWorkflow(context.Background(), workflow, run)
+	// Start execution in background — pass workflow by value to avoid data race
+	// on the pointer if the caller mutates it after Execute returns.
+	wfCopy := *workflow
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		e.executeWorkflow(context.Background(), &wfCopy, run.ID)
+	}()
 
 	return run, nil
 }
 
-func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow, run *models.WorkflowRun) {
+func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow, runID string) {
 	defer func() {
 		if r := recover(); r != nil {
 			fmt.Printf("Panic in executeWorkflow: %v\n", r)
-			e.failRun(context.Background(), run, fmt.Sprintf("Execution panicked: %v", r))
+			e.failRun(context.Background(), runID, fmt.Sprintf("Execution panicked: %v", r))
 		}
 	}()
 
@@ -89,9 +96,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 
 	// Update status to running
 	now := time.Now()
-	run.Status = "running"
-	run.StartedAt = &now
-	if err := e.runRepo.UpdateStatus(ctx, run.ID, run.Status, nil, &run.StartedAt, nil); err != nil {
+	if err := e.runRepo.UpdateStatus(ctx, runID, "running", nil, &now, nil); err != nil {
 		fmt.Printf("Failed to update run status: %v\n", err)
 		return
 	}
@@ -99,7 +104,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 	// Get execution levels for parallel processing
 	levels, err := e.validator.GetExecutionLevels(workflow.Definition)
 	if err != nil {
-		e.failRun(ctx, run, err.Error())
+		e.failRun(ctx, runID, err.Error())
 		return
 	}
 
@@ -113,7 +118,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 
 		for _, nodeID := range level {
 			wg.Add(1)
-			go e.executeNode(ctx, &wg, errChan, workflow, run, nodeID, nodeOutputs, &outputsMu)
+			go e.executeNode(ctx, &wg, errChan, workflow, runID, nodeID, nodeOutputs, &outputsMu)
 		}
 
 		wg.Wait()
@@ -126,21 +131,19 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 		}
 
 		if len(errs) > 0 {
-			e.failRun(ctx, run, fmt.Sprintf("Execution failed: %v", errs))
+			e.failRun(ctx, runID, fmt.Sprintf("Execution failed: %v", errs))
 			return
 		}
 	}
 
 	// Mark as completed
 	now = time.Now()
-	run.Status = "success"
-	run.CompletedAt = &now
-	if err := e.runRepo.UpdateStatus(ctx, run.ID, run.Status, nil, nil, &run.CompletedAt); err != nil {
+	if err := e.runRepo.UpdateStatus(ctx, runID, "success", nil, nil, &now); err != nil {
 		fmt.Printf("Failed to update run status: %v\n", err)
 	}
 }
 
-func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, run *models.WorkflowRun, nodeID string, outputs map[string]interface{}, outputsMu *sync.Mutex) {
+func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, runID string, nodeID string, outputs map[string]interface{}, outputsMu *sync.Mutex) {
 	defer wg.Done()
 
 	// Find node
@@ -167,7 +170,7 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 
 	// Create step
 	step := &models.WorkflowRunStep{
-		RunID:  run.ID,
+		RunID:  runID,
 		StepID: nodeID,
 		Status: "pending",
 		Input:  inputsCopy,
@@ -659,12 +662,15 @@ func flattenHeaders(h http.Header) map[string]string {
 	return m
 }
 
-func (e *Engine) failRun(ctx context.Context, run *models.WorkflowRun, errorMsg string) {
+func (e *Engine) failRun(ctx context.Context, runID string, errorMsg string) {
 	now := time.Now()
-	run.Status = "failed"
-	run.Error = &errorMsg
-	run.CompletedAt = &now
-	if err := e.runRepo.UpdateStatus(ctx, run.ID, run.Status, run.Error, nil, &run.CompletedAt); err != nil {
+	if err := e.runRepo.UpdateStatus(ctx, runID, "failed", &errorMsg, nil, &now); err != nil {
 		fmt.Printf("Failed to update run status: %v\n", err)
 	}
+}
+
+// Wait blocks until all in-flight workflow executions have completed.
+// Call this before shutting down the database pool.
+func (e *Engine) Wait() {
+	e.wg.Wait()
 }

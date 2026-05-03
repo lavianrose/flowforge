@@ -1,5 +1,11 @@
 # FlowForge
 
+[![Backend Tests](https://github.com/lavianrose/flowforge/actions/workflows/backend-test.yml/badge.svg)](https://github.com/lavianrose/flowforge/actions/workflows/backend-test.yml)
+[![Frontend Tests](https://github.com/lavianrose/flowforge/actions/workflows/frontend-test.yml/badge.svg)](https://github.com/lavianrose/flowforge/actions/workflows/frontend-test.yml)
+[![Coverage Status](https://codecov.io/gh/lavianrose/flowforge/branch/main/graph/badge.svg)](https://codecov.io/gh/lavianrose/flowforge)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lavianrose/flowforge)](https://goreportcard.com/report/github.com/lavianrose/flowforge)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitHub Actions.
 
 ## Features
@@ -236,12 +242,11 @@ Authorization: Bearer <token>
 ### Backend Commands
 
 ```bash
-make build        # Build binaries
-make run          # Start server
-make migrate-up   # Run migrations
-make migrate-down # Rollback migrations
-make seed         # Seed users
-make clean        # Clean build artifacts
+make build              # Build binary
+make run                # Start server (auto-migrate + seed)
+make test               # Run unit tests with race detector
+make test-integration   # Run integration tests
+make clean              # Clean build artifacts
 ```
 
 ### Frontend Commands
@@ -260,9 +265,7 @@ npm test          # Run tests
 flowforge/
 ├── backend/                 # Go backend
 │   ├── cmd/                # Entry points
-│   │   ├── api/            # Main API server
-│   │   ├── migrate/        # Migration runner
-│   │   └── seed/           # Database seeder
+│   │   └── api/            # API server (auto-migrate + seed + serve)
 │   ├── internal/           # Private packages
 │   │   ├── auth/           # JWT & passwords
 │   │   ├── config/         # Configuration
@@ -275,6 +278,7 @@ flowforge/
 │   │   ├── models/         # Data models
 │   │   ├── repository/     # Database access
 │   │   ├── scheduler/      # Cron job scheduler
+│   │   ├── seed/           # Database seeding
 │   │   ├── server/         # Fiber server & routing with graceful shutdown
 │   │   └── validator/      # Input validation
 │   ├── migrations/         # SQL migrations

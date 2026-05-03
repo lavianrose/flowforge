@@ -22,9 +22,8 @@ func NewScheduler(
 	scheduleRepo *repository.ScheduleRepository,
 	workflowRepo *repository.WorkflowRepository,
 	runRepo *repository.RunRepository,
+	engine *execution.Engine,
 ) *Scheduler {
-	engine := execution.NewEngine(runRepo, workflowRepo)
-
 	return &Scheduler{
 		scheduleRepo: scheduleRepo,
 		workflowRepo: workflowRepo,
