@@ -11,6 +11,8 @@ import {
 } from "@/lib/hooks";
 import "reactflow/dist/style.css";
 import VersionHistory from "@/components/VersionHistory";
+import ScheduleManager from "@/components/ScheduleManager";
+import WebhookManager from "@/components/WebhookManager";
 import { nodeTypes } from "@/lib/nodeTypes";
 
 export default function WorkflowDetailPage() {
@@ -218,6 +220,16 @@ export default function WorkflowDetailPage() {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      {/* Schedule & Webhook Management */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-lg bg-white p-6 shadow">
+          <ScheduleManager workflowId={workflow.id} />
+        </div>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <WebhookManager workflowId={workflow.id} />
         </div>
       </div>
 

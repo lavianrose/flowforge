@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	cronutil "github.com/lavianrose/flowforge/internal/cron"
 	"github.com/lavianrose/flowforge/internal/execution"
 	"github.com/lavianrose/flowforge/internal/models"
 	"github.com/lavianrose/flowforge/internal/repository"
@@ -63,9 +64,11 @@ func (h *ScheduleHandler) CreateSchedule(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to get workflow"})
 	}
 
-	// Calculate next run time (simple: 1 hour from now)
-	// TODO: Use proper cron library
-	nextRun := time.Now().Add(time.Hour)
+	// Calculate next run time based on cron expression
+	nextRun, err := cronutil.NextRun(req.CronExpression, time.Now())
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid cron expression"})
+	}
 
 	schedule := &models.Schedule{
 		WorkflowID:    req.WorkflowID,

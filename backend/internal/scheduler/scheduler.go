@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	cronutil "github.com/lavianrose/flowforge/internal/cron"
 	"github.com/lavianrose/flowforge/internal/execution"
 	"github.com/lavianrose/flowforge/internal/repository"
 )
@@ -74,9 +75,12 @@ func (s *Scheduler) checkAndRunSchedules() {
 		now := time.Now()
 		s.scheduleRepo.UpdateLastRun(ctx, schedule.ID, now)
 
-		// Calculate next run time (simple implementation - add 1 hour for now)
-		// TODO: Use proper cron library to calculate next run
-		nextRun := now.Add(time.Hour)
+		// Calculate next run time based on cron expression
+		nextRun, err := cronutil.NextRun(schedule.CronExpression, now)
+		if err != nil {
+			log.Printf("Error parsing cron expression %q for schedule %s: %v", schedule.CronExpression, schedule.ID, err)
+			continue
+		}
 		s.scheduleRepo.UpdateNextRun(ctx, schedule.ID, nextRun)
 
 		log.Printf("Executed scheduled workflow %s, next run at %v", schedule.WorkflowID, nextRun)

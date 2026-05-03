@@ -77,6 +77,31 @@ export interface WorkflowVersion {
   workflow_id: string;
 }
 
+export interface Schedule {
+  id: string;
+  workflow_id: string;
+  tenant_id: string;
+  cron_expression: string;
+  active: boolean;
+  next_run_at: string;
+  last_run_at?: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Webhook {
+  id: string;
+  workflow_id: string;
+  tenant_id: string;
+  path: string;
+  secret: string;
+  active: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface HealthStats {
   active_runs: number;
   avg_duration_seconds: number;
@@ -212,6 +237,50 @@ export class APIClient {
   // Stats
   async getHealthStats(): Promise<HealthStats> {
     return this.request("/stats/health");
+  }
+
+  // Schedules
+  async getSchedules(): Promise<{ schedules: Schedule[] }> {
+    const response = await this.request<{ schedules: Schedule[] }>("/schedules");
+    return { schedules: response.schedules || [] };
+  }
+
+  async createSchedule(
+    workflowId: string,
+    cronExpression: string
+  ): Promise<Schedule> {
+    return this.request(`/workflows/${workflowId}/schedule`, {
+      method: "POST",
+      body: JSON.stringify({
+        workflow_id: workflowId,
+        cron_expression: cronExpression,
+      }),
+    });
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    return this.request(`/schedules/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  // Webhooks
+  async getWebhooks(): Promise<{ webhooks: Webhook[] }> {
+    const response = await this.request<{ webhooks: Webhook[] }>("/webhooks");
+    return { webhooks: response.webhooks || [] };
+  }
+
+  async createWebhook(workflowId: string): Promise<Webhook> {
+    return this.request(`/workflows/${workflowId}/webhook`, {
+      method: "POST",
+      body: JSON.stringify({ workflow_id: workflowId }),
+    });
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    return this.request(`/webhooks/${id}`, {
+      method: "DELETE",
+    });
   }
 }
 

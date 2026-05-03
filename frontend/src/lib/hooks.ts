@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, type LoginRequest, type Workflow, type WorkflowRun } from "./api";
+import { api, type LoginRequest, type Schedule, type Webhook, type Workflow, type WorkflowRun } from "./api";
 
 // Auth hooks
 export function useLogin() {
@@ -285,6 +285,110 @@ export function useRollbackWorkflow() {
         queryKey: ["workflow-versions", variables.id],
       });
       queryClient.invalidateQueries({ queryKey: ["workflows"] });
+    },
+  });
+}
+
+// Schedule hooks
+export function useSchedules() {
+  return useQuery({
+    queryKey: ["schedules"],
+    queryFn: async () => {
+      const data = await api.getSchedules();
+      return data.schedules;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      workflowId,
+      cronExpression,
+    }: {
+      workflowId: string;
+      cronExpression: string;
+    }) => api.createSchedule(workflowId, cronExpression),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+    },
+  });
+}
+
+export function useDeleteSchedule() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteSchedule(id),
+    onMutate: async (scheduleId) => {
+      await queryClient.cancelQueries({ queryKey: ["schedules"] });
+      const previousSchedules = queryClient.getQueryData(["schedules"]);
+      queryClient.setQueryData(
+        ["schedules"],
+        (old: Schedule[] | undefined) =>
+          old?.filter((s) => s.id !== scheduleId) || []
+      );
+      return { previousSchedules };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousSchedules) {
+        queryClient.setQueryData(["schedules"], context.previousSchedules);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+    },
+  });
+}
+
+// Webhook hooks
+export function useWebhooks() {
+  return useQuery({
+    queryKey: ["webhooks"],
+    queryFn: async () => {
+      const data = await api.getWebhooks();
+      return data.webhooks;
+    },
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useCreateWebhook() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (workflowId: string) => api.createWebhook(workflowId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+    },
+  });
+}
+
+export function useDeleteWebhook() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.deleteWebhook(id),
+    onMutate: async (webhookId) => {
+      await queryClient.cancelQueries({ queryKey: ["webhooks"] });
+      const previousWebhooks = queryClient.getQueryData(["webhooks"]);
+      queryClient.setQueryData(
+        ["webhooks"],
+        (old: Webhook[] | undefined) =>
+          old?.filter((w) => w.id !== webhookId) || []
+      );
+      return { previousWebhooks };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousWebhooks) {
+        queryClient.setQueryData(["webhooks"], context.previousWebhooks);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     },
   });
 }
