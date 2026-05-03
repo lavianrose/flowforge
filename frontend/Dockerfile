@@ -14,9 +14,10 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --no-fund
 
-# Copy source code and config
+# Copy config files
 COPY next.config.ts ./
 COPY tsconfig.json ./
+COPY postcss.config.mjs ./
 
 # Copy public assets
 COPY public ./public

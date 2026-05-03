@@ -1,6 +1,7 @@
 'use client';
 
 import { useHealthStats } from '@/lib/hooks';
+import { useRouter } from 'next/navigation';
 import {
   BarChart,
   Bar,
@@ -15,6 +16,7 @@ import {
 } from 'recharts';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { data: stats, isLoading, error, refetch } = useHealthStats();
 
   // Prepare chart data
@@ -51,12 +53,40 @@ export default function DashboardPage() {
             Overview of your workflow performance
           </p>
         </div>
-        <button
-          onClick={() => refetch()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          Refresh
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => router.push('/dashboard/workflows/new')}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+          >
+            Create Workflow
+          </button>
+          <button
+            onClick={() => refetch()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-linear-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 mb-8 text-white">
+        <h3 className="text-xl font-bold mb-2">Get Started</h3>
+        <p className="text-indigo-100 mb-4">Create your first automation workflow to get started</p>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => router.push('/dashboard/workflows/new')}
+            className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-md hover:bg-indigo-50"
+          >
+            Create Workflow
+          </button>
+          <button
+            onClick={() => router.push('/dashboard/workflows')}
+            className="px-6 py-3 bg-indigo-700 text-white font-semibold rounded-md hover:bg-indigo-800"
+          >
+            View All Workflows
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}

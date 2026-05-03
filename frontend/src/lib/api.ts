@@ -122,7 +122,8 @@ export class APIClient {
 
   // Workflows
   async getWorkflows(): Promise<{ workflows: Workflow[] }> {
-    return this.request('/workflows');
+    const response = await this.request<{ data: Workflow[]; pagination: any }>('/workflows');
+    return { workflows: response.data || [] };
   }
 
   async getWorkflow(id: string): Promise<Workflow> {
@@ -162,7 +163,8 @@ export class APIClient {
 
   async getRuns(workflowId?: string): Promise<{ runs: WorkflowRun[] }> {
     const params = workflowId ? `?workflow_id=${workflowId}` : '';
-    return this.request(`/runs${params}`);
+    const response = await this.request<{ data: WorkflowRun[]; pagination: any }>(`/runs${params}`);
+    return { runs: response.data || [] };
   }
 
   // Stats
