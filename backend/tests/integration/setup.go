@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lavianrose/flowforge/internal/auth"
 	"github.com/lavianrose/flowforge/internal/config"
 	"github.com/lavianrose/flowforge/internal/db"
 	"github.com/lavianrose/flowforge/internal/server"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type TestSuite struct {
@@ -23,15 +25,15 @@ type TestSuite struct {
 }
 
 func Setup(t *testing.T) *TestSuite {
-	// Load test config - use existing flowforge database for tests
+	// Load test config - use environment variables in CI, with localhost fallback for local dev
 	cfg := &config.Config{
-		PostgresURL: "postgres://flowforge:flowforge@localhost:54322/flowforge?sslmode=disable",
-		RedisURL:    "localhost:63797",
-		RedisPwd:    "",
-		RedisDB:     0,
-		JWTSecret:   "test-secret-key",
-		Port:        "3001", // Different port for tests
-		Env:         "test",
+		PostgresURL: getEnv("POSTGRES_URL", "postgres://flowforge:flowforge@localhost:54322/flowforge?sslmode=disable"),
+		RedisURL:    getEnv("REDIS_URL", "localhost:63797"),
+		RedisPwd:    getEnv("REDIS_PASSWORD", ""),
+		RedisDB:     getEnvInt("REDIS_DB", 0),
+		JWTSecret:   getEnv("JWT_SECRET", "test-secret-key"),
+		Port:        getEnv("PORT", "3001"), // Different port for tests
+		Env:         getEnv("ENV", "test"),
 	}
 
 	// Initialize database
@@ -181,6 +183,22 @@ func (ts *TestSuite) CreateTestWorkflow(t *testing.T, ctx context.Context, tenan
 	}
 
 	return workflowID
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if parsed, err := strconv.Atoi(value); err == nil {
+			return parsed
+		}
+	}
+	return defaultValue
 }
 
 func runMigrations(t *testing.T, dbURL string) error {

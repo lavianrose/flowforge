@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/lavianrose/flowforge/internal/config"
@@ -35,7 +36,15 @@ func Init(cfg *config.Config) error {
 		DB:       cfg.RedisDB,
 	})
 
-	if err := RDB.Ping(ctx).Err(); err != nil {
+	for i := 0; i < 10; i++ {
+		err = RDB.Ping(ctx).Err()
+		if err == nil {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	if err != nil {
 		return fmt.Errorf("unable to connect to redis: %w", err)
 	}
 
