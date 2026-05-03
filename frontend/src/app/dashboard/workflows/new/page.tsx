@@ -214,7 +214,6 @@ export default function NewWorkflowPage() {
             <Controls />
             <MiniMap />
           </ReactFlow>
-          </ReactFlow>
         </div>
       </div>
     </ProtectedRoute>
