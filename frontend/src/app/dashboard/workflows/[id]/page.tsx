@@ -5,6 +5,7 @@ import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks'
 import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { nodeTypes } from '@/lib/nodeTypes';
+import VersionHistory from '@/components/VersionHistory';
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -139,8 +140,13 @@ export default function WorkflowDetailPage() {
           </dl>
         </div>
 
-        {/* Nodes */}
+        {/* Version History */}
         <div className="bg-white rounded-lg shadow p-6">
+          <VersionHistory workflowId={workflow.id} />
+        </div>
+
+        {/* Nodes */}
+        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
           <h3 className="text-lg font-semibold mb-4">Nodes ({workflow.definition.nodes.length})</h3>
           <div className="space-y-2">
             {workflow.definition.nodes.map((node) => (

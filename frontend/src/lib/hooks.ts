@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, LoginRequest, Workflow, WorkflowRun } from './api';
+import { api, LoginRequest, Workflow, WorkflowRun, WorkflowVersion } from './api';
 
 // Auth hooks
 export function useLogin() {
@@ -247,5 +247,33 @@ export function useHealthStats() {
     queryKey: ['stats', 'health'],
     queryFn: () => api.getHealthStats(),
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+  });
+}
+
+// Version hooks
+export function useWorkflowVersions(id: string) {
+  return useQuery({
+    queryKey: ['workflow-versions', id],
+    queryFn: async () => {
+      const data = await api.getWorkflowVersions(id);
+      return data.versions;
+    },
+    enabled: !!id,
+    staleTime: 60 * 1000, // 1 minute
+  });
+}
+
+export function useRollbackWorkflow() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, version }: { id: string; version: number }) =>
+      api.rollbackWorkflow(id, version),
+    onSuccess: (_, variables) => {
+      // Invalidate workflow and versions queries
+      queryClient.invalidateQueries({ queryKey: ['workflow', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['workflow-versions', variables.id] });
+      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+    },
   });
 }
