@@ -202,7 +202,7 @@ func (r *RunRepository) ListWithPagination(ctx context.Context, tenantID string,
 	return runs, total, nil
 }
 
-func (r *RunRepository) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error {
+func (r *RunRepository) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt *time.Time) error {
 	query := `
 		UPDATE workflow_runs
 		SET status = $1

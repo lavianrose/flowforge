@@ -660,7 +660,7 @@ func (r *fakeRunRepo) Create(ctx context.Context, run *models.WorkflowRun) error
 	return nil
 }
 
-func (r *fakeRunRepo) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt **time.Time) error {
+func (r *fakeRunRepo) UpdateStatus(ctx context.Context, id string, status string, errorMsg *string, startedAt, completedAt *time.Time) error {
 	return nil
 }
 
@@ -720,14 +720,13 @@ func TestExecuteNode_RetriesOnTransientHTTPFailure(t *testing.T) {
 			}},
 		},
 	}
-	run := &models.WorkflowRun{ID: "run1"}
 	outputs := make(map[string]interface{})
 	var outputsMu sync.Mutex
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
 	wg.Add(1)
-	go e.executeNode(context.Background(), &wg, errChan, workflow, run, "http1", outputs, &outputsMu)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu)
 	wg.Wait()
 	close(errChan)
 
@@ -767,14 +766,13 @@ func TestExecuteNode_ExhaustsRetriesOnPermanentFailure(t *testing.T) {
 			}},
 		},
 	}
-	run := &models.WorkflowRun{ID: "run1"}
 	outputs := make(map[string]interface{})
 	var outputsMu sync.Mutex
 	var wg sync.WaitGroup
 	errChan := make(chan error, 1)
 
 	wg.Add(1)
-	go e.executeNode(context.Background(), &wg, errChan, workflow, run, "http1", outputs, &outputsMu)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu)
 	wg.Wait()
 	close(errChan)
 
