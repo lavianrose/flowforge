@@ -38,7 +38,7 @@ Always complete highest priority unfinished item first.
 - [x] docker-compose.yml
 - [x] GitHub Actions CI
 - [x] Unit tests
-- [ ] Integration tests
+- [x] Integration tests
 - [x] README.md
 - [x] ARCHITECTURE.md final review
 <!-- - [ ] AI failure analyzer -->
@@ -64,7 +64,9 @@ Always complete highest priority unfinished item first.
 ✅ Global health panel completed
 ✅ Client-side caching with React Query completed
 ✅ Optimistic UI updates completed
-✅ Unit tests completed (108 tests - 87 backend + 21 frontend)
+✅ Unit tests completed (193 tests - 172 backend + 21 frontend)
+✅ Integration tests completed (19 integration tests)
+✅ Authentication tests completed (123 auth-specific tests)
 ✅ GitHub Actions CI/CD completed
 
 **BACKEND MVP COMPLETE!** 🎉
@@ -78,9 +80,9 @@ Always complete highest priority unfinished item first.
 ### RBAC Implementation Testing
 
 #### Pre-requisites
-- [ ] Start all services: `docker-compose up -d`
-- [ ] Run database seed: `docker-compose exec backend go run cmd/seed/main.go`
-- [ ] Verify all three users created in database
+- [x] Start all services: `docker-compose up -d`
+- [x] Run database seed: `docker-compose exec backend go run cmd/seed/main.go`
+- [x] Verify all three users created in database
 
 #### Test Users
 - **Admin**: admin@flowforge.local / admin123 (full access)
@@ -122,37 +124,37 @@ Always complete highest priority unfinished item first.
   - [ ] Attempt to access /dashboard/workflows/new → redirected
 
 #### Backend API Permission Tests
-- [ ] Test Viewer permissions
-  - [ ] GET /api/v1/workflows → 200 OK
-  - [ ] POST /api/v1/workflows → 403 Forbidden
-  - [ ] PUT /api/v1/workflows/:id → 403 Forbidden
-  - [ ] POST /api/v1/workflows/:id/trigger → 403 Forbidden
-  - [ ] DELETE /api/v1/workflows/:id → 403 Forbidden
+- [x] Test Viewer permissions
+  - [x] GET /api/v1/workflows → 200 OK
+  - [x] POST /api/v1/workflows → 403 Forbidden
+  - [x] PUT /api/v1/workflows/:id → 403 Forbidden
+  - [x] POST /api/v1/workflows/:id/trigger → 403 Forbidden
+  - [x] DELETE /api/v1/workflows/:id → 403 Forbidden
 
-- [ ] Test Editor permissions
-  - [ ] GET /api/v1/workflows → 200 OK
-  - [ ] POST /api/v1/workflows → 201 Created
-  - [ ] PUT /api/v1/workflows/:id → 200 OK
-  - [ ] POST /api/v1/workflows/:id/trigger → 200 OK
-  - [ ] DELETE /api/v1/workflows/:id → 403 Forbidden
+- [x] Test Editor permissions
+  - [x] GET /api/v1/workflows → 200 OK
+  - [x] POST /api/v1/workflows → 201 Created
+  - [x] PUT /api/v1/workflows/:id → 200 OK
+  - [x] POST /api/v1/workflows/:id/trigger → 200 OK
+  - [x] DELETE /api/v1/workflows/:id → 403 Forbidden
 
-- [ ] Test Admin permissions
-  - [ ] GET /api/v1/workflows → 200 OK
-  - [ ] POST /api/v1/workflows → 201 Created
-  - [ ] PUT /api/v1/workflows/:id → 200 OK
-  - [ ] POST /api/v1/workflows/:id/trigger → 200 OK
-  - [ ] DELETE /api/v1/workflows/:id → 200 OK
+- [x] Test Admin permissions
+  - [x] GET /api/v1/workflows → 200 OK
+  - [x] POST /api/v1/workflows → 201 Created
+  - [x] PUT /api/v1/workflows/:id → 200 OK
+  - [x] POST /api/v1/workflows/:id/trigger → 200 OK
+  - [x] DELETE /api/v1/workflows/:id → 200 OK
 
 #### Cross-Tenant Isolation Tests
-- [ ] Create workflow as tenant A user
-- [ ] Login as tenant B user
-- [ ] Verify tenant B cannot access tenant A's workflows (404/403)
+- [x] Create workflow as tenant A user
+- [x] Login as tenant B user
+- [x] Verify tenant B cannot access tenant A's workflows (404/403)
 
 #### Authentication Tests
-- [ ] Test expired JWT → 401 Unauthorized
-- [ ] Test invalid JWT → 401 Unauthorized
-- [ ] Test missing Authorization header → 401 Unauthorized
-- [ ] Test malformed Authorization header → 401 Unauthorized
+- [x] Test expired JWT → 401 Unauthorized
+- [x] Test invalid JWT → 401 Unauthorized
+- [x] Test missing Authorization header → 401 Unauthorized
+- [x] Test malformed Authorization header → 401 Unauthorized
 
 #### UI/UX Tests
 - [ ] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
@@ -254,7 +256,7 @@ Always complete highest priority unfinished item first.
 ### Medium Priority
 
 - [x] Unit tests
-- [ ] Integration tests
+- [x] Integration tests
 - [x] GitHub Actions CI/CD
 - [x] ARCHITECTURE.md final review
 
