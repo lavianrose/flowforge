@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -207,4 +208,10 @@ func getEnvInt(key string, defaultValue int) int {
 		}
 	}
 	return defaultValue
+}
+
+// DoRequest sends a request through the test server with a generous timeout
+// to avoid flakes in CI environments where the database is slower.
+func (ts *TestSuite) DoRequest(req *http.Request) (*http.Response, error) {
+	return ts.Server.GetApp().Test(req, 10000) // 10s timeout for CI
 }
