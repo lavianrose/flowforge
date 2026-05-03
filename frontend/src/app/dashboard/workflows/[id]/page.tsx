@@ -1,13 +1,17 @@
-'use client';
+"use client";
 
-import { useParams, useRouter } from 'next/navigation';
-import { useWorkflow, useDeleteWorkflow, useTriggerWorkflow } from '@/lib/hooks';
-import { useAuth } from '@/lib/auth';
-import { useSnackbar } from '@/components/Snackbar';
-import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
-import 'reactflow/dist/style.css';
-import { nodeTypes } from '@/lib/nodeTypes';
-import VersionHistory from '@/components/VersionHistory';
+import { useParams, useRouter } from "next/navigation";
+import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
+import { useSnackbar } from "@/components/Snackbar";
+import { useAuth } from "@/lib/auth";
+import {
+  useDeleteWorkflow,
+  useTriggerWorkflow,
+  useWorkflow,
+} from "@/lib/hooks";
+import "reactflow/dist/style.css";
+import VersionHistory from "@/components/VersionHistory";
+import { nodeTypes } from "@/lib/nodeTypes";
 
 export default function WorkflowDetailPage() {
   const params = useParams();
@@ -19,130 +23,146 @@ export default function WorkflowDetailPage() {
   const triggerMutation = useTriggerWorkflow();
 
   // Convert workflow definition to ReactFlow format
-  const nodes = workflow ? workflow.definition.nodes.map((node) => ({
-    id: node.id,
-    type: 'custom',
-    position: node.position,
-    data: {
-      type: node.type,
-      label: node.name,
-      config: node.config,
-    },
-  })) : [];
+  const nodes = workflow
+    ? workflow.definition.nodes.map((node) => ({
+        id: node.id,
+        type: "custom",
+        position: node.position,
+        data: {
+          type: node.type,
+          label: node.name,
+          config: node.config,
+        },
+      }))
+    : [];
 
-  const edges = workflow ? workflow.definition.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-  })) : [];
+  const edges = workflow
+    ? workflow.definition.edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+      }))
+    : [];
 
   const handleDelete = async () => {
-    if (!workflow) return;
-    if (!confirm('Are you sure you want to delete this workflow?')) {
+    if (!workflow) {
+      return;
+    }
+    if (!confirm("Are you sure you want to delete this workflow?")) {
       return;
     }
 
     try {
       await deleteMutation.mutateAsync(workflow.id);
-      showSnackbar('Workflow deleted successfully', 'success');
-      router.push('/dashboard/workflows');
+      showSnackbar("Workflow deleted successfully", "success");
+      router.push("/dashboard/workflows");
     } catch (err) {
-      showSnackbar(err instanceof Error ? err.message : 'Failed to delete workflow', 'error');
+      showSnackbar(
+        err instanceof Error ? err.message : "Failed to delete workflow",
+        "error"
+      );
     }
   };
 
   const handleTrigger = async () => {
-    if (!workflow) return;
+    if (!workflow) {
+      return;
+    }
 
     try {
       await triggerMutation.mutateAsync(workflow.id);
-      showSnackbar('Workflow triggered successfully', 'success');
+      showSnackbar("Workflow triggered successfully", "success");
     } catch (err) {
-      showSnackbar(err instanceof Error ? err.message : 'Failed to trigger workflow', 'error');
+      showSnackbar(
+        err instanceof Error ? err.message : "Failed to trigger workflow",
+        "error"
+      );
     }
   };
 
   if (isLoading) {
-    return <div className="text-center py-12">Loading workflow...</div>;
+    return <div className="py-12 text-center">Loading workflow...</div>;
   }
 
   if (error || !workflow) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error?.message || 'Workflow not found'}
+      <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+        {error?.message || "Workflow not found"}
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">{workflow.name}</h2>
-          <p className="text-sm text-gray-600 mt-1">{workflow.description}</p>
+          <h2 className="font-bold text-2xl text-gray-900">{workflow.name}</h2>
+          <p className="mt-1 text-gray-600 text-sm">{workflow.description}</p>
         </div>
         <div className="flex space-x-2">
           <button
-            onClick={() => router.push('/dashboard/workflows')}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+            className="rounded-md bg-gray-100 px-4 py-2 text-gray-700 hover:bg-gray-200"
+            onClick={() => router.push("/dashboard/workflows")}
           >
             Back
           </button>
-          {can('trigger') && (
+          {can("trigger") && (
             <button
-              onClick={handleTrigger}
+              className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700 disabled:opacity-50"
               disabled={triggerMutation.isPending}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+              onClick={handleTrigger}
             >
-              {triggerMutation.isPending ? 'Running...' : 'Run Workflow'}
+              {triggerMutation.isPending ? "Running..." : "Run Workflow"}
             </button>
           )}
-          {can('delete') && (
+          {can("delete") && (
             <button
-              onClick={handleDelete}
+              className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:opacity-50"
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+              onClick={handleDelete}
             >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </button>
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Workflow Info */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Workflow Details</h3>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h3 className="mb-4 font-semibold text-lg">Workflow Details</h3>
           <dl className="space-y-3">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dt className="font-medium text-gray-500 text-sm">Status</dt>
               <dd className="mt-1">
                 <span
-                  className={`px-2 py-1 rounded text-sm ${
+                  className={`rounded px-2 py-1 text-sm ${
                     workflow.active
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  {workflow.active ? 'Active' : 'Inactive'}
+                  {workflow.active ? "Active" : "Inactive"}
                 </span>
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Timeout</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="font-medium text-gray-500 text-sm">Timeout</dt>
+              <dd className="mt-1 text-gray-900 text-sm">
                 {workflow.timeout_seconds} seconds
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="font-medium text-gray-500 text-sm">Created</dt>
+              <dd className="mt-1 text-gray-900 text-sm">
                 {new Date(workflow.created_at).toLocaleString()}
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-              <dd className="mt-1 text-sm text-gray-900">
+              <dt className="font-medium text-gray-500 text-sm">
+                Last Updated
+              </dt>
+              <dd className="mt-1 text-gray-900 text-sm">
                 {new Date(workflow.updated_at).toLocaleString()}
               </dd>
             </div>
@@ -150,25 +170,27 @@ export default function WorkflowDetailPage() {
         </div>
 
         {/* Version History */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg bg-white p-6 shadow">
           <VersionHistory workflowId={workflow.id} />
         </div>
 
         {/* Nodes */}
-        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold mb-4">Nodes ({workflow.definition.nodes.length})</h3>
+        <div className="rounded-lg bg-white p-6 shadow lg:col-span-2">
+          <h3 className="mb-4 font-semibold text-lg">
+            Nodes ({workflow.definition.nodes.length})
+          </h3>
           <div className="space-y-2">
             {workflow.definition.nodes.map((node) => (
               <div
+                className="rounded-md border border-gray-200 bg-gray-50 p-3"
                 key={node.id}
-                className="p-3 bg-gray-50 rounded-md border border-gray-200"
               >
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-900">{node.name}</p>
-                    <p className="text-xs text-gray-500">Type: {node.type}</p>
+                    <p className="text-gray-500 text-xs">Type: {node.type}</p>
                   </div>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <span className="rounded bg-blue-100 px-2 py-1 text-blue-800 text-xs">
                     {node.id}
                   </span>
                 </div>
@@ -178,13 +200,15 @@ export default function WorkflowDetailPage() {
         </div>
 
         {/* Edges */}
-        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <h3 className="text-lg font-semibold mb-4">Connections ({workflow.definition.edges.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+        <div className="rounded-lg bg-white p-6 shadow lg:col-span-2">
+          <h3 className="mb-4 font-semibold text-lg">
+            Connections ({workflow.definition.edges.length})
+          </h3>
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
             {workflow.definition.edges.map((edge) => (
               <div
+                className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm"
                 key={edge.id}
-                className="p-3 bg-gray-50 rounded-md border border-gray-200 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">{edge.source}</span>
@@ -198,36 +222,42 @@ export default function WorkflowDetailPage() {
       </div>
 
       {/* Visual DAG Viewer */}
-      <div className="mt-6 bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Workflow Visualization</h3>
-        <div className="border border-gray-200 rounded-lg overflow-hidden" style={{ height: '500px' }}>
+      <div className="mt-6 rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 font-semibold text-lg">Workflow Visualization</h3>
+        <div
+          className="overflow-hidden rounded-lg border border-gray-200"
+          style={{ height: "500px" }}
+        >
           <ReactFlow
-            nodes={nodes}
             edges={edges}
-            nodeTypes={nodeTypes}
-            nodesDraggable={false}
-            nodesConnectable={false}
             elementsSelectable={false}
-            zoomOnScroll={true}
-            panOnScroll={true}
             fitView
+            nodes={nodes}
+            nodesConnectable={false}
+            nodesDraggable={false}
+            nodeTypes={nodeTypes}
+            panOnScroll={true}
+            zoomOnScroll={true}
           >
             <Background />
             <Controls />
             <MiniMap />
           </ReactFlow>
         </div>
-        <p className="text-xs text-gray-500 mt-2">
-          💡 This is a read-only view. Use the "Edit Workflow" button to make changes.
+        <p className="mt-2 text-gray-500 text-xs">
+          💡 This is a read-only view. Use the "Edit Workflow" button to make
+          changes.
         </p>
       </div>
 
       {/* Edit Workflow Button */}
-      {can('edit') && (
+      {can("edit") && (
         <div className="mt-6 flex justify-end">
           <button
-            onClick={() => router.push(`/dashboard/workflows/${workflow.id}/edit`)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
+            onClick={() =>
+              router.push(`/dashboard/workflows/${workflow.id}/edit`)
+            }
           >
             Edit Workflow
           </button>

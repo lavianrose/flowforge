@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import type React from "react";
+import { createContext, useCallback, useContext, useState } from "react";
 
 type SnackbarType = "success" | "error" | "info" | "warning";
 
@@ -18,7 +19,9 @@ const SnackbarContext = createContext<SnackbarContextType | null>(null);
 
 export function useSnackbar() {
   const ctx = useContext(SnackbarContext);
-  if (!ctx) throw new Error("useSnackbar must be used within SnackbarProvider");
+  if (!ctx) {
+    throw new Error("useSnackbar must be used within SnackbarProvider");
+  }
   return ctx;
 }
 
@@ -35,7 +38,7 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
         setItems((prev) => prev.filter((item) => item.id !== id));
       }, 4000);
     },
-    [],
+    []
   );
 
   const dismiss = useCallback((id: number) => {
@@ -59,20 +62,20 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
   return (
     <SnackbarContext.Provider value={{ showSnackbar }}>
       {children}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-md">
+      <div className="fixed right-4 bottom-4 z-50 flex max-w-md flex-col gap-2">
         {items.map((item) => (
           <div
+            className={`${colorMap[item.type]} flex animate-slide-up items-center gap-3 rounded-lg px-4 py-3 text-white shadow-lg`}
             key={item.id}
-            className={`${colorMap[item.type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-up`}
             role="alert"
           >
-            <span className="text-lg font-bold flex-shrink-0">
+            <span className="flex-shrink-0 font-bold text-lg">
               {iconMap[item.type]}
             </span>
-            <span className="text-sm flex-1">{item.message}</span>
+            <span className="flex-1 text-sm">{item.message}</span>
             <button
+              className="ml-2 flex-shrink-0 text-white/70 hover:text-white"
               onClick={() => dismiss(item.id)}
-              className="text-white/70 hover:text-white ml-2 flex-shrink-0"
             >
               ×
             </button>

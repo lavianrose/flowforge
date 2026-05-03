@@ -1,19 +1,19 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
 interface NodeConfig {
   [key: string]: unknown;
 }
 
 interface NodeConfigPanelProps {
-  nodeId: string;
-  nodeType: string;
-  nodeLabel: string;
   config: NodeConfig;
+  nodeId: string;
+  nodeLabel: string;
+  nodeType: string;
+  onClose: () => void;
   onConfigChange: (nodeId: string, config: NodeConfig) => void;
   onLabelChange: (nodeId: string, label: string) => void;
-  onClose: () => void;
 }
 
 export default function NodeConfigPanel({
@@ -46,59 +46,61 @@ export default function NodeConfigPanel({
   };
 
   const typeLabel: Record<string, string> = {
-    http: 'HTTP Request',
-    delay: 'Delay',
-    script: 'Script',
-    condition: 'Condition',
+    http: "HTTP Request",
+    delay: "Delay",
+    script: "Script",
+    condition: "Condition",
   };
 
   const typeColor: Record<string, string> = {
-    http: 'text-blue-700',
-    delay: 'text-yellow-700',
-    script: 'text-purple-700',
-    condition: 'text-green-700',
+    http: "text-blue-700",
+    delay: "text-yellow-700",
+    script: "text-purple-700",
+    condition: "text-green-700",
   };
 
   return (
-    <div className="bg-white rounded-lg shadow p-4 overflow-y-auto h-full">
-      <div className="flex items-center justify-between mb-4">
+    <div className="h-full overflow-y-auto rounded-lg bg-white p-4 shadow">
+      <div className="mb-4 flex items-center justify-between">
         <h3 className="font-semibold text-sm">Node Configuration</h3>
         <button
+          className="text-gray-400 text-lg leading-none hover:text-gray-600"
           onClick={onClose}
-          className="text-gray-400 hover:text-gray-600 text-lg leading-none"
         >
           &times;
         </button>
       </div>
 
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Label
         </label>
         <input
+          className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => handleLabelChange(e.target.value)}
           type="text"
           value={localLabel}
-          onChange={(e) => handleLabelChange(e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
         />
       </div>
 
       <div className="mb-3">
-        <span className={`text-xs font-medium ${typeColor[nodeType] || 'text-gray-600'}`}>
+        <span
+          className={`font-medium text-xs ${typeColor[nodeType] || "text-gray-600"}`}
+        >
           Type: {typeLabel[nodeType] || nodeType}
         </span>
       </div>
 
-      {nodeType === 'http' && (
+      {nodeType === "http" && (
         <HttpConfig config={localConfig} onChange={updateConfig} />
       )}
-      {nodeType === 'delay' && (
+      {nodeType === "delay" && (
         <DelayConfig config={localConfig} onChange={updateConfig} />
       )}
-      {nodeType === 'script' && (
+      {nodeType === "script" && (
         <ScriptConfig config={localConfig} onChange={updateConfig} />
       )}
-      {nodeType === 'condition' && (
+      {nodeType === "condition" && (
         <ConditionConfig config={localConfig} onChange={updateConfig} />
       )}
     </div>
@@ -113,48 +115,50 @@ function HttpConfig({
   config: NodeConfig;
   onChange: (key: string, value: unknown) => void;
 }) {
-  const [headerKey, setHeaderKey] = useState('');
-  const [headerVal, setHeaderVal] = useState('');
+  const [headerKey, setHeaderKey] = useState("");
+  const [headerVal, setHeaderVal] = useState("");
 
   const headers = (config.headers || {}) as Record<string, string>;
 
   const addHeader = () => {
-    if (!headerKey.trim()) return;
+    if (!headerKey.trim()) {
+      return;
+    }
     const updated = { ...headers, [headerKey.trim()]: headerVal };
-    onChange('headers', updated);
-    setHeaderKey('');
-    setHeaderVal('');
+    onChange("headers", updated);
+    setHeaderKey("");
+    setHeaderVal("");
   };
 
   const removeHeader = (key: string) => {
     const updated = { ...headers };
     delete updated[key];
-    onChange('headers', updated);
+    onChange("headers", updated);
   };
 
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           URL *
         </label>
         <input
-          type="text"
-          value={(config.url as string) || ''}
-          onChange={(e) => onChange('url', e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("url", e.target.value)}
           placeholder="https://api.example.com/data"
+          type="text"
+          value={(config.url as string) || ""}
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Method *
         </label>
         <select
-          value={(config.method as string) || 'GET'}
-          onChange={(e) => onChange('method', e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+          className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("method", e.target.value)}
+          value={(config.method as string) || "GET"}
         >
           <option value="GET">GET</option>
           <option value="POST">POST</option>
@@ -165,56 +169,62 @@ function HttpConfig({
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Body (JSON)
         </label>
         <textarea
-          value={typeof config.body === 'string' ? (config.body as string) : config.body ? JSON.stringify(config.body, null, 2) : ''}
-          onChange={(e) => onChange('body', e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-          rows={4}
+          className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("body", e.target.value)}
           placeholder='{"key": "value"}'
+          rows={4}
+          value={
+            typeof config.body === "string"
+              ? (config.body as string)
+              : config.body
+                ? JSON.stringify(config.body, null, 2)
+                : ""
+          }
         />
-        <p className="text-xs text-gray-400 mt-1">
-          Supports template: {'{{inputs.node_id.field}}'}
+        <p className="mt-1 text-gray-400 text-xs">
+          Supports template: {"{{inputs.node_id.field}}"}
         </p>
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Headers
         </label>
         {Object.entries(headers).map(([key, val]) => (
-          <div key={key} className="flex items-center gap-1 mb-1">
-            <span className="text-xs bg-gray-100 px-2 py-0.5 rounded flex-1 truncate">
+          <div className="mb-1 flex items-center gap-1" key={key}>
+            <span className="flex-1 truncate rounded bg-gray-100 px-2 py-0.5 text-xs">
               {key}: {val}
             </span>
             <button
+              className="text-red-400 text-xs hover:text-red-600"
               onClick={() => removeHeader(key)}
-              className="text-red-400 hover:text-red-600 text-xs"
             >
               &times;
             </button>
           </div>
         ))}
-        <div className="flex gap-1 mt-1">
+        <div className="mt-1 flex gap-1">
           <input
-            type="text"
-            value={headerKey}
+            className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             onChange={(e) => setHeaderKey(e.target.value)}
             placeholder="Key"
-            className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            type="text"
+            value={headerKey}
           />
           <input
-            type="text"
-            value={headerVal}
+            className="flex-1 rounded border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             onChange={(e) => setHeaderVal(e.target.value)}
             placeholder="Value"
-            className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            type="text"
+            value={headerVal}
           />
           <button
+            className="rounded bg-blue-500 px-2 py-1 text-white text-xs hover:bg-blue-600"
             onClick={addHeader}
-            className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
           >
             +
           </button>
@@ -235,15 +245,17 @@ function DelayConfig({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Delay (seconds) *
         </label>
         <input
+          className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          min={0}
+          onChange={(e) =>
+            onChange("seconds", Number.parseInt(e.target.value, 10) || 0)
+          }
           type="number"
           value={(config.seconds as number) || 5}
-          onChange={(e) => onChange('seconds', parseInt(e.target.value, 10) || 0)}
-          min={0}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
         />
       </div>
     </div>
@@ -261,18 +273,19 @@ function ScriptConfig({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Code *
         </label>
         <textarea
-          value={(config.code as string) || ''}
-          onChange={(e) => onChange('code', e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-          rows={8}
+          className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("code", e.target.value)}
           placeholder={'return {"result": {{inputs.node_id.field}}}'}
+          rows={8}
+          value={(config.code as string) || ""}
         />
-        <p className="text-xs text-gray-400 mt-1">
-          Supports: <code>return {`{"key": "value"}`}</code> with template variables {'{{inputs.node_id.field}}'}
+        <p className="mt-1 text-gray-400 text-xs">
+          Supports: <code>return {`{"key": "value"}`}</code> with template
+          variables {"{{inputs.node_id.field}}"}
         </p>
       </div>
     </div>
@@ -290,25 +303,25 @@ function ConditionConfig({
   return (
     <div className="space-y-3">
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
           Expression *
         </label>
         <input
+          className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("expression", e.target.value)}
+          placeholder="{{inputs.node1.status_code}} == 200"
           type="text"
-          value={(config.expression as string) || ''}
-          onChange={(e) => onChange('expression', e.target.value)}
-          className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-          placeholder='{{inputs.node1.status_code}} == 200'
+          value={(config.expression as string) || ""}
         />
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="mt-1 text-gray-400 text-xs">
           Supports: ==, !=, &gt;, &lt;, &gt;=, &lt;= operators
         </p>
       </div>
-      <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-        <p className="font-medium mb-1">Examples:</p>
-        <ul className="space-y-0.5 list-disc list-inside">
-          <li>{`{{inputs.node1.status_code}} == 200`}</li>
-          <li>{`{{inputs.node1.json.count}} > 10`}</li>
+      <div className="rounded bg-gray-50 p-2 text-gray-500 text-xs">
+        <p className="mb-1 font-medium">Examples:</p>
+        <ul className="list-inside list-disc space-y-0.5">
+          <li>{"{{inputs.node1.status_code}} == 200"}</li>
+          <li>{"{{inputs.node1.json.count}} > 10"}</li>
           <li>{`{{inputs.node1.body}} != "error"`}</li>
           <li>true</li>
         </ul>

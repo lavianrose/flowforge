@@ -1,4 +1,4 @@
-import CustomNode from '@/components/nodes/CustomNode';
+import CustomNode from "@/components/nodes/CustomNode";
 
 export const nodeTypes = {
   custom: CustomNode,

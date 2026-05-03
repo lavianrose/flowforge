@@ -1,36 +1,37 @@
-'use client';
+"use client";
 
-import { useHealthStats } from '@/lib/hooks';
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import {
-  BarChart,
   Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from 'recharts';
+} from "recharts";
+import { useHealthStats } from "@/lib/hooks";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { data: stats, isLoading, error, refetch } = useHealthStats();
 
   // Prepare chart data
-  const chartData = stats?.hourly_stats?.map((stat) => ({
-    hour: `${stat.hour}:00`,
-    total: stat.total_runs,
-    success: stat.success_runs,
-    failed: stat.failed_runs,
-    duration: stat.avg_duration,
-  })) || [];
+  const chartData =
+    stats?.hourly_stats?.map((stat) => ({
+      hour: `${stat.hour}:00`,
+      total: stat.total_runs,
+      success: stat.success_runs,
+      failed: stat.failed_runs,
+      duration: stat.avg_duration,
+    })) || [];
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="text-xl">Loading dashboard...</div>
       </div>
     );
@@ -38,31 +39,31 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error.message || 'Failed to load stats'}
+      <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+        {error.message || "Failed to load stats"}
       </div>
     );
   }
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="font-bold text-2xl text-gray-900">Dashboard</h2>
+          <p className="mt-1 text-gray-600 text-sm">
             Overview of your workflow performance
           </p>
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={() => router.push('/dashboard/workflows/new')}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+            onClick={() => router.push("/dashboard/workflows/new")}
           >
             Create Workflow
           </button>
           <button
+            className="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
             onClick={() => refetch()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Refresh
           </button>
@@ -70,19 +71,21 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-linear-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 mb-8 text-white">
-        <h3 className="text-xl font-bold mb-2">Get Started</h3>
-        <p className="text-indigo-100 mb-4">Create your first automation workflow to get started</p>
+      <div className="mb-8 rounded-lg bg-linear-to-r from-indigo-500 to-purple-600 p-6 text-white shadow-lg">
+        <h3 className="mb-2 font-bold text-xl">Get Started</h3>
+        <p className="mb-4 text-indigo-100">
+          Create your first automation workflow to get started
+        </p>
         <div className="flex space-x-3">
           <button
-            onClick={() => router.push('/dashboard/workflows/new')}
-            className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-md hover:bg-indigo-50"
+            className="rounded-md bg-white px-6 py-3 font-semibold text-indigo-600 hover:bg-indigo-50"
+            onClick={() => router.push("/dashboard/workflows/new")}
           >
             Create Workflow
           </button>
           <button
-            onClick={() => router.push('/dashboard/workflows')}
-            className="px-6 py-3 bg-indigo-700 text-white font-semibold rounded-md hover:bg-indigo-800"
+            className="rounded-md bg-indigo-700 px-6 py-3 font-semibold text-white hover:bg-indigo-800"
+            onClick={() => router.push("/dashboard/workflows")}
           >
             View All Workflows
           </button>
@@ -90,86 +93,82 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Active Runs */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg bg-white p-6 shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Active Runs</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="font-medium text-gray-500 text-sm">Active Runs</p>
+              <p className="mt-2 font-bold text-3xl text-gray-900">
                 {stats?.active_runs || 0}
               </p>
             </div>
-            <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100">
               <span className="text-2xl">⚡</span>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">
+          <p className="mt-4 text-gray-500 text-xs">
             Currently executing workflows
           </p>
         </div>
 
         {/* Success Rate */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg bg-white p-6 shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Success Rate</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="font-medium text-gray-500 text-sm">Success Rate</p>
+              <p className="mt-2 font-bold text-3xl text-gray-900">
                 {(stats?.success_rate ?? 0).toFixed(1)}%
               </p>
             </div>
-            <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <span className="text-2xl">✅</span>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">
-            Last 24 hours
-          </p>
+          <p className="mt-4 text-gray-500 text-xs">Last 24 hours</p>
         </div>
 
         {/* Failure Rate */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg bg-white p-6 shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Failure Rate</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="font-medium text-gray-500 text-sm">Failure Rate</p>
+              <p className="mt-2 font-bold text-3xl text-gray-900">
                 {(stats?.failure_rate ?? 0).toFixed(1)}%
               </p>
             </div>
-            <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
               <span className="text-2xl">❌</span>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">
-            Last 24 hours
-          </p>
+          <p className="mt-4 text-gray-500 text-xs">Last 24 hours</p>
         </div>
 
         {/* Avg Duration */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="rounded-lg bg-white p-6 shadow">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Avg Duration</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="font-medium text-gray-500 text-sm">Avg Duration</p>
+              <p className="mt-2 font-bold text-3xl text-gray-900">
                 {(stats?.avg_duration_seconds ?? 0).toFixed(1)}s
               </p>
             </div>
-            <div className="h-12 w-12 bg-purple-100 rounded-full flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100">
               <span className="text-2xl">⏱️</span>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-4">
-            Average execution time
-          </p>
+          <p className="mt-4 text-gray-500 text-xs">Average execution time</p>
         </div>
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Runs by Hour Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">Runs by Hour (Last 24h)</h3>
-          <ResponsiveContainer width="100%" height={300}>
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h3 className="mb-4 font-semibold text-lg">
+            Runs by Hour (Last 24h)
+          </h3>
+          <ResponsiveContainer height={300} width="100%">
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" />
@@ -183,11 +182,11 @@ export default function DashboardPage() {
         </div>
 
         {/* Average Duration Chart */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold mb-4">
+        <div className="rounded-lg bg-white p-6 shadow">
+          <h3 className="mb-4 font-semibold text-lg">
             Avg Duration by Hour (seconds)
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer height={300} width="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" />
@@ -195,11 +194,11 @@ export default function DashboardPage() {
               <Tooltip />
               <Legend />
               <Line
-                type="monotone"
                 dataKey="duration"
+                name="Avg Duration"
                 stroke="#8b5cf6"
                 strokeWidth={2}
-                name="Avg Duration"
+                type="monotone"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -207,24 +206,24 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="mt-6 bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">Summary (Last 24 Hours)</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="mt-6 rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 font-semibold text-lg">Summary (Last 24 Hours)</h3>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="text-center">
-            <p className="text-sm text-gray-500">Total Runs</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-gray-500 text-sm">Total Runs</p>
+            <p className="mt-1 font-bold text-2xl text-gray-900">
               {stats?.total_runs_24h || 0}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-500">Successful</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">
+            <p className="text-gray-500 text-sm">Successful</p>
+            <p className="mt-1 font-bold text-2xl text-green-600">
               {stats?.success_runs_24h || 0}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-500">Failed</p>
-            <p className="text-2xl font-bold text-red-600 mt-1">
+            <p className="text-gray-500 text-sm">Failed</p>
+            <p className="mt-1 font-bold text-2xl text-red-600">
               {stats?.failed_runs_24h || 0}
             </p>
           </div>

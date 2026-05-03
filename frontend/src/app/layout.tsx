@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/lib/auth";
 import { QueryProvider } from "@/components/QueryProvider";
 import { SnackbarProvider } from "@/components/Snackbar";
+import { AuthProvider } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "FlowForge - Workflow Automation",
@@ -15,12 +15,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full">
+    <html className="h-full" lang="en">
       <head>
-        <meta name="color-scheme" content="light" />
-        <meta name="theme-color" content="#ffffff" />
+        <meta content="light" name="color-scheme" />
+        <meta content="#ffffff" name="theme-color" />
       </head>
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="flex min-h-full flex-col font-sans">
         <QueryProvider>
           <SnackbarProvider>
             <AuthProvider>{children}</AuthProvider>

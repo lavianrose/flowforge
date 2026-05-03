@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import type { WorkflowRun } from "@/lib/api";
 import { useRun, useTriggerWorkflow } from "@/lib/hooks";
 import { connectSSE } from "@/lib/sse";
-import { WorkflowRun } from "@/lib/api";
 
 interface Step {
-  id: string;
-  run_id: string;
-  step_id: string;
-  status: string;
-  input: Record<string, unknown>;
-  output: Record<string, unknown> | null;
-  error: string;
-  retry_count: number;
-  started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  error: string;
+  id: string;
+  input: Record<string, unknown>;
+  output: Record<string, unknown> | null;
+  retry_count: number;
+  run_id: string;
+  started_at: string | null;
+  status: string;
+  step_id: string;
 }
 
 export default function RunDetailPage() {
@@ -56,7 +56,9 @@ export default function RunDetailPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (!liveMode || !run) return;
+    if (!(liveMode && run)) {
+      return;
+    }
 
     // Connect to SSE stream
     const apiUrl =
@@ -86,7 +88,7 @@ export default function RunDetailPage() {
       (err) => {
         console.error("SSE error:", err);
         setLiveMode(false);
-      },
+      }
     );
 
     return () => {
@@ -140,7 +142,7 @@ export default function RunDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="text-xl">Loading run details...</div>
       </div>
     );
@@ -148,7 +150,7 @@ export default function RunDetailPage() {
 
   if (error || !run) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+      <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-red-700">
         {error?.message || "Run not found"}
       </div>
     );
@@ -165,17 +167,17 @@ export default function RunDetailPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-gray-900">Run Details</h2>
+            <h2 className="font-bold text-2xl text-gray-900">Run Details</h2>
             {liveMode && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 font-medium text-green-800 text-xs">
                 <span className="animate-pulse">🔴</span> LIVE
               </span>
             )}
           </div>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="mt-1 text-gray-600 text-sm">
             Workflow ID:{" "}
             <span className="font-mono">{run.workflow_id.slice(0, 8)}...</span>
           </p>
@@ -183,6 +185,8 @@ export default function RunDetailPage() {
         <div className="flex items-center space-x-2">
           {(run.status === "failed" || run.status === "cancelled") && (
             <button
+              className="rounded-md bg-yellow-500 px-4 py-2 text-white hover:bg-yellow-600"
+              disabled={retryMutation.isPending}
               onClick={() => {
                 setRetryError(null);
                 retryMutation.mutate(run.workflow_id, {
@@ -191,42 +195,40 @@ export default function RunDetailPage() {
                   },
                   onError: (err) => {
                     setRetryError(
-                      err instanceof Error ? err.message : "Retry failed",
+                      err instanceof Error ? err.message : "Retry failed"
                     );
                   },
                 });
               }}
-              className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-              disabled={retryMutation.isPending}
             >
               {retryMutation.isPending ? "Retrying..." : "Retry Workflow"}
             </button>
           )}
           <button
+            className={`rounded-md px-4 py-2 ${
+              liveMode
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+            disabled={run.status !== "running" && run.status !== "pending"}
             onClick={() => {
               setLiveMode(!liveMode);
               if (!liveMode) {
                 refetch();
               }
             }}
-            className={`px-4 py-2 rounded-md ${
-              liveMode
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            disabled={run.status !== "running" && run.status !== "pending"}
           >
             {liveMode ? "Live" : "Live Updates"}
           </button>
           <button
+            className="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
             onClick={() => refetch()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
           >
             Refresh
           </button>
           <button
+            className="rounded-md bg-gray-100 px-4 py-2 text-gray-700 hover:bg-gray-200"
             onClick={() => router.back()}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
           >
             Back
           </button>
@@ -234,22 +236,22 @@ export default function RunDetailPage() {
       </div>
 
       {retryError && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded">
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-4 text-red-700">
           <p className="font-medium">Retry failed</p>
-          <p className="text-sm mt-1">{retryError}</p>
+          <p className="mt-1 text-sm">{retryError}</p>
         </div>
       )}
 
       {/* Run Info */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h3 className="text-lg font-semibold mb-4">Run Information</h3>
-        <dl className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="mb-6 rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 font-semibold text-lg">Run Information</h3>
+        <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div>
-            <dt className="text-sm font-medium text-gray-500">Status</dt>
+            <dt className="font-medium text-gray-500 text-sm">Status</dt>
             <dd className="mt-1">
               <span
-                className={`px-2 py-1 text-sm font-medium rounded border ${getStatusColor(
-                  run.status,
+                className={`rounded border px-2 py-1 font-medium text-sm ${getStatusColor(
+                  run.status
                 )}`}
               >
                 {getStepIcon(run.status)} {run.status}
@@ -257,70 +259,70 @@ export default function RunDetailPage() {
             </dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Triggered By</dt>
-            <dd className="mt-1 text-sm text-gray-900">{run.triggered_by}</dd>
+            <dt className="font-medium text-gray-500 text-sm">Triggered By</dt>
+            <dd className="mt-1 text-gray-900 text-sm">{run.triggered_by}</dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Started</dt>
-            <dd className="mt-1 text-sm text-gray-900">
+            <dt className="font-medium text-gray-500 text-sm">Started</dt>
+            <dd className="mt-1 text-gray-900 text-sm">
               {started?.toLocaleString() || "-"}
             </dd>
           </div>
           <div>
-            <dt className="text-sm font-medium text-gray-500">Duration</dt>
-            <dd className="mt-1 text-sm text-gray-900">
+            <dt className="font-medium text-gray-500 text-sm">Duration</dt>
+            <dd className="mt-1 text-gray-900 text-sm">
               {duration ? `${duration}s` : "-"}
             </dd>
           </div>
         </dl>
 
         {run.error && (
-          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-800 font-medium">Error</p>
-            <p className="text-sm text-red-700 mt-1">{run.error}</p>
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3">
+            <p className="font-medium text-red-800 text-sm">Error</p>
+            <p className="mt-1 text-red-700 text-sm">{run.error}</p>
           </div>
         )}
       </div>
 
       {/* Steps Timeline */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold mb-4">
+      <div className="rounded-lg bg-white p-6 shadow">
+        <h3 className="mb-4 font-semibold text-lg">
           Execution Steps ({steps.length})
         </h3>
 
         {steps.length === 0 ? (
-          <p className="text-sm text-gray-500">No steps recorded yet</p>
+          <p className="text-gray-500 text-sm">No steps recorded yet</p>
         ) : (
           <div className="space-y-4">
             {steps.map((step, index) => (
               <div
+                className="flex gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4"
                 key={step.id}
-                className="flex gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
               >
                 <div className="flex-shrink-0">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${getStatusColor(
-                      step.status,
+                    className={`flex h-8 w-8 items-center justify-center rounded-full text-sm ${getStatusColor(
+                      step.status
                     )} border`}
                   >
                     {index + 1}
                   </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium text-gray-900">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h4 className="font-medium text-gray-900 text-sm">
                       {step.step_id}
                     </h4>
                     <div className="flex items-center gap-2">
                       <span
-                        className={`px-2 py-1 text-xs font-medium rounded border ${getStatusColor(
-                          step.status,
+                        className={`rounded border px-2 py-1 font-medium text-xs ${getStatusColor(
+                          step.status
                         )}`}
                       >
                         {getStepIcon(step.status)} {step.status}
                       </span>
                       {step.retry_count > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="text-gray-500 text-xs">
                           Retry #{step.retry_count}
                         </span>
                       )}
@@ -328,23 +330,23 @@ export default function RunDetailPage() {
                   </div>
 
                   {step.error && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                    <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-red-700 text-sm">
                       {step.error}
                     </div>
                   )}
 
                   {step.output && (
                     <details className="mt-2">
-                      <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
+                      <summary className="cursor-pointer text-gray-600 text-sm hover:text-gray-800">
                         Output
                       </summary>
-                      <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-x-auto">
+                      <pre className="mt-2 overflow-x-auto rounded bg-gray-100 p-2 text-xs">
                         {JSON.stringify(step.output, null, 2)}
                       </pre>
                     </details>
                   )}
 
-                  <div className="mt-2 text-xs text-gray-500">
+                  <div className="mt-2 text-gray-500 text-xs">
                     {step.started_at && (
                       <span>
                         Started: {new Date(step.started_at).toLocaleString()}
