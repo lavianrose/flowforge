@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { use, useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   addEdge,
   Background,
@@ -38,36 +38,33 @@ const getDefaultConfig = (type: string) => {
 export default function EditWorkflowPage() {
   const params = useParams();
   const router = useRouter();
-  const { showSnackbar } = useSnackbar();
+  const [workflow, setWorkflow] = useState<Workflow | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [workflowName, setWorkflowName] = useState("");
+  const [workflowDescription, setWorkflowDescription] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const { showSnackbar } = useSnackbar();
 
-  // Fetch workflow data using React 19 use() hook to avoid setState in useEffect
-  const workflowPromise = useMemo(
-    () =>
-      api.getWorkflow(params.id as string).catch((err) => {
-        showSnackbar(
-          err instanceof Error ? err.message : "Failed to load workflow",
-          "error"
-        );
-        router.push("/dashboard");
-        return null;
-      }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [params.id]
-  );
+  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
-  const initialData = use(workflowPromise);
+  useEffect(() => {
+    if (params.id) {
+      loadWorkflow(params.id as string);
+    }
+  }, [params.id]);
 
-  const [workflow, setWorkflow] = useState<Workflow | null>(initialData);
-  const [workflowName, setWorkflowName] = useState(initialData?.name ?? "");
-  const [workflowDescription, setWorkflowDescription] = useState(
-    initialData?.description ?? ""
-  );
+  const loadWorkflow = async (id: string) => {
+    try {
+      setLoading(true);
+      const data = await api.getWorkflow(id);
+      setWorkflow(data);
+      setWorkflowName(data.name);
+      setWorkflowDescription(data.description);
 
-  const initialNodes: Node[] = useMemo(
-    () =>
-      initialData?.definition.nodes.map((node) => ({
+      const flowNodes: Node[] = data.definition.nodes.map((node) => ({
         id: node.id,
         type: "custom" as const,
         position: node.position,
@@ -76,28 +73,30 @@ export default function EditWorkflowPage() {
           label: node.name,
           config: node.config,
         },
-      })) ?? [],
-    [initialData]
-  );
+      }));
 
-  const initialEdges: Edge[] = useMemo(
-    () =>
-      initialData?.definition.edges.map((edge) => ({
+      const flowEdges: Edge[] = data.definition.edges.map((edge) => ({
         id: edge.id,
         source: edge.source,
         target: edge.target,
-      })) ?? [],
-    [initialData]
-  );
+      }));
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
+      setNodes(flowNodes);
+      setEdges(flowEdges);
+    } catch (err) {
+      showSnackbar(
+        err instanceof Error ? err.message : "Failed to load workflow",
+        "error",
+      );
+      router.push("/dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges]
+    [setEdges],
   );
 
   const onNodeClick: NodeMouseHandler = useCallback((_event, node) => {
@@ -126,29 +125,29 @@ export default function EditWorkflowPage() {
       setNodes((nds) => [...nds, newNode]);
       setSelectedNodeId(newNode.id);
     },
-    [setNodes]
+    [setNodes],
   );
 
   const handleConfigChange = useCallback(
     (nodeId: string, config: Record<string, unknown>) => {
       setNodes((nds) =>
         nds.map((n) =>
-          n.id === nodeId ? { ...n, data: { ...n.data, config } } : n
-        )
+          n.id === nodeId ? { ...n, data: { ...n.data, config } } : n,
+        ),
       );
     },
-    [setNodes]
+    [setNodes],
   );
 
   const handleLabelChange = useCallback(
     (nodeId: string, label: string) => {
       setNodes((nds) =>
         nds.map((n) =>
-          n.id === nodeId ? { ...n, data: { ...n.data, label } } : n
-        )
+          n.id === nodeId ? { ...n, data: { ...n.data, label } } : n,
+        ),
       );
     },
-    [setNodes]
+    [setNodes],
   );
 
   const handleSave = async () => {
@@ -194,14 +193,14 @@ export default function EditWorkflowPage() {
     } catch (err) {
       showSnackbar(
         err instanceof Error ? err.message : "Failed to update workflow",
-        "error"
+        "error",
       );
     } finally {
       setSaving(false);
     }
   };
 
-  if (!initialData) {
+  if (loading) {
     return (
       <div className="flex h-[calc(100vh-200px)] items-center justify-center">
         <div className="text-xl">Loading workflow...</div>
