@@ -1,6 +1,11 @@
 package server
 
 import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -17,18 +22,18 @@ import (
 )
 
 type Server struct {
-	app          *fiber.App
-	cfg          *config.Config
-	jwtMgr       *auth.JWTManager
-	authMW       *middleware.AuthMiddleware
-	rateLimit    *middleware.RateLimiter
-	authHdl      *handlers.AuthHandler
-	workflowHdl  *handlers.WorkflowHandler
-	runHdl       *handlers.RunHandler
-	scheduleHdl  *handlers.ScheduleHandler
-	webhookHdl   *handlers.WebhookHandler
-	statsHdl     *handlers.StatsHandler
-	scheduler    *scheduler.Scheduler
+	app         *fiber.App
+	cfg         *config.Config
+	jwtMgr      *auth.JWTManager
+	authMW      *middleware.AuthMiddleware
+	rateLimit   *middleware.RateLimiter
+	authHdl     *handlers.AuthHandler
+	workflowHdl *handlers.WorkflowHandler
+	runHdl      *handlers.RunHandler
+	scheduleHdl *handlers.ScheduleHandler
+	webhookHdl  *handlers.WebhookHandler
+	statsHdl    *handlers.StatsHandler
+	scheduler   *scheduler.Scheduler
 }
 
 func New(cfg *config.Config) *Server {
@@ -43,10 +48,10 @@ func New(cfg *config.Config) *Server {
 	rateLimit := middleware.NewRateLimiter(db.RDB)
 
 	// Configure rate limits
-	rateLimit.AddConfig("auth", 10, time.Minute, middleware.ByIP)           // 10 req/min for auth
-	rateLimit.AddConfig("read", 100, time.Minute, middleware.ByUserID)      // 100 req/min for reads
-	rateLimit.AddConfig("write", 30, time.Minute, middleware.ByUserID)      // 30 req/min for writes
-	rateLimit.AddConfig("trigger", 10, time.Minute, middleware.ByUserID)    // 10 req/min for triggers
+	rateLimit.AddConfig("auth", 10, time.Minute, middleware.ByIP)        // 10 req/min for auth
+	rateLimit.AddConfig("read", 100, time.Minute, middleware.ByUserID)   // 100 req/min for reads
+	rateLimit.AddConfig("write", 30, time.Minute, middleware.ByUserID)   // 30 req/min for writes
+	rateLimit.AddConfig("trigger", 10, time.Minute, middleware.ByUserID) // 10 req/min for triggers
 
 	userRepo := repository.NewUserRepository(db.Pool)
 	authHdl := handlers.NewAuthHandler(userRepo, jwtMgr)
@@ -66,18 +71,18 @@ func New(cfg *config.Config) *Server {
 	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo)
 
 	return &Server{
-		app: app,
-		cfg: cfg,
-		jwtMgr: jwtMgr,
-		authMW: authMW,
-		rateLimit: rateLimit,
-		authHdl: authHdl,
+		app:         app,
+		cfg:         cfg,
+		jwtMgr:      jwtMgr,
+		authMW:      authMW,
+		rateLimit:   rateLimit,
+		authHdl:     authHdl,
 		workflowHdl: workflowHdl,
-		runHdl: runHdl,
+		runHdl:      runHdl,
 		scheduleHdl: scheduleHdl,
-		webhookHdl: webhookHdl,
-		statsHdl: statsHdl,
-		scheduler: sched,
+		webhookHdl:  webhookHdl,
+		statsHdl:    statsHdl,
+		scheduler:   sched,
 	}
 }
 
@@ -142,8 +147,43 @@ func (s *Server) Start() error {
 	// Start scheduler
 	s.scheduler.Start()
 
-	// Start HTTP server
-	return s.app.Listen(":" + s.cfg.Port)
+	// Channel to listen for interrupt signal
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	// Channel to listen for server errors
+	serverErrors := make(chan error, 1)
+
+	// Start server in a goroutine
+	go func() {
+		fmt.Printf("Server starting on port %s\n", s.cfg.Port)
+		serverErrors <- s.app.Listen(":" + s.cfg.Port)
+	}()
+
+	// Wait for interrupt or server error
+	select {
+	case sig := <-c:
+		fmt.Printf("Received signal: %v. Shutting down gracefully...\n", sig)
+	case err := <-serverErrors:
+		fmt.Printf("Server error: %v\n", err)
+		return err
+	}
+
+	// Create shutdown context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Shutdown server
+	if err := s.app.ShutdownWithContext(ctx); err != nil {
+		fmt.Printf("Server shutdown error: %v\n", err)
+		return err
+	}
+
+	// Stop scheduler
+	s.scheduler.Stop()
+
+	fmt.Println("Server shutdown complete")
+	return nil
 }
 
 // GetApp returns the Fiber app for testing purposes

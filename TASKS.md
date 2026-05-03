@@ -24,6 +24,8 @@ Always complete highest priority unfinished item first.
 - [x] Trigger workflow
 - [x] Execution worker
 - [x] Retry logic
+- [x] Implement workflow step retry with exponential backoff
+- [x] Frontend retry button on run detail page
 - [x] Timeout logic
 - [x] Init Next.js app
 - [x] Login page
@@ -80,16 +82,19 @@ Always complete highest priority unfinished item first.
 ### RBAC Implementation Testing
 
 #### Pre-requisites
+
 - [x] Start all services: `docker-compose up -d`
 - [x] Run database seed: `docker-compose exec backend go run cmd/seed/main.go`
 - [x] Verify all three users created in database
 
 #### Test Users
+
 - **Admin**: admin@flowforge.local / admin123 (full access)
 - **Editor**: editor@flowforge.local / editor123 (create, edit, trigger - no delete)
 - **Viewer**: viewer@flowforge.local / viewer123 (read-only)
 
 #### Frontend Permission Tests
+
 - [x] Login with admin user
   - [x] Verify role badge shows "Admin" in red
   - [x] Verify "Create Workflow" button is visible
@@ -124,6 +129,7 @@ Always complete highest priority unfinished item first.
   - [x] Attempt to access /dashboard/workflows/new → redirected
 
 #### Backend API Permission Tests
+
 - [x] Test Viewer permissions
   - [x] GET /api/v1/workflows → 200 OK
   - [x] POST /api/v1/workflows → 403 Forbidden
@@ -146,17 +152,20 @@ Always complete highest priority unfinished item first.
   - [x] DELETE /api/v1/workflows/:id → 200 OK
 
 #### Cross-Tenant Isolation Tests
+
 - [x] Create workflow as tenant A user
 - [x] Login as tenant B user
 - [x] Verify tenant B cannot access tenant A's workflows (404/403)
 
 #### Authentication Tests
+
 - [x] Test expired JWT → 401 Unauthorized
 - [x] Test invalid JWT → 401 Unauthorized
 - [x] Test missing Authorization header → 401 Unauthorized
 - [x] Test malformed Authorization header → 401 Unauthorized
 
 #### UI/UX Tests
+
 - [x] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
 - [x] Verify smooth hiding/showing of buttons based on permissions
 - [x] Verify no console errors during permission checks
@@ -164,6 +173,7 @@ Always complete highest priority unfinished item first.
 - [x] Verify error messages display properly
 
 #### Integration Tests (Manual)
+
 - [ ] Create workflow as Admin
 - [ ] Logout and login as Editor
 - [ ] Verify Editor can see and edit the workflow
@@ -178,6 +188,7 @@ Always complete highest priority unfinished item first.
 ## Summary
 
 ### Backend Features (100% Complete ✅)
+
 - ✅ Full CRUD workflows with versioning & rollback
 - ✅ Workflow triggering (manual, scheduled, webhook)
 - ✅ Pagination & filtering on all list endpoints
@@ -187,6 +198,7 @@ Always complete highest priority unfinished item first.
 - ✅ Rate limiting (Redis-based, configurable per endpoint)
 
 ### Frontend Features (100% Complete ✅)
+
 - ✅ Authentication with JWT
 - ✅ Dashboard with workflow list & details
 - ✅ Visual DAG builder with React Flow (edit mode)
@@ -198,6 +210,7 @@ Always complete highest priority unfinished item first.
 - ✅ Optimistic UI updates for all mutations
 
 ### Infrastructure (100% Complete ✅)
+
 - ✅ Docker multi-stage builds
 - ✅ Docker Compose for local development
 - ✅ PostgreSQL + Redis
@@ -298,4 +311,3 @@ Always complete highest priority unfinished item first.
   - [x] MiniMap for navigation
 
 **✅ ALL FRONTEND FEATURES COMPLETE!** 🎉
-

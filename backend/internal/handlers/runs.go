@@ -63,6 +63,14 @@ func (h *RunHandler) StreamRun(c *fiber.Ctx) error {
 	// Send initial state
 	h.sendEvent(c, "run_state", run)
 
+	// Get initial steps
+	initialSteps, err := h.runRepo.GetSteps(c.Context(), id)
+	if err != nil {
+		h.sendError(c, "Failed to get initial steps")
+		return nil
+	}
+	h.sendEvent(c, "steps_state", initialSteps)
+
 	// Poll for updates (in production, use Redis pub/sub or WebSocket)
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -79,8 +87,18 @@ func (h *RunHandler) StreamRun(c *fiber.Ctx) error {
 				return nil
 			}
 
-			// Send updated state
+			// Send updated run state
 			h.sendEvent(c, "run_state", currentRun)
+
+			// Check steps status
+			currentSteps, err := h.runRepo.GetSteps(c.Context(), id)
+			if err != nil {
+				h.sendError(c, "Failed to get steps status")
+				return nil
+			}
+
+			// Send updated steps state
+			h.sendEvent(c, "steps_state", currentSteps)
 
 			// If run is complete, stop streaming
 			if currentRun.Status == "success" || currentRun.Status == "failed" || currentRun.Status == "cancelled" {
