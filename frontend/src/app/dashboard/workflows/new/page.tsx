@@ -18,6 +18,7 @@ import 'reactflow/dist/style.css';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { nodeTypes } from '@/lib/nodeTypes';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function NewWorkflowPage() {
   const router = useRouter();
@@ -105,7 +106,8 @@ export default function NewWorkflowPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-200px)]">
+    <ProtectedRoute requiredPermission="create">
+      <div className="h-[calc(100vh-200px)]">
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Create Workflow</h2>
@@ -212,8 +214,9 @@ export default function NewWorkflowPage() {
             <Controls />
             <MiniMap />
           </ReactFlow>
+          </ReactFlow>
         </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }

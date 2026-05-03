@@ -70,9 +70,63 @@ func main() {
 		fmt.Println("Using existing admin user")
 	}
 
-	fmt.Printf("User ID: %s\n", userID)
+	// Create editor user
+	editorEmail := "editor@flowforge.local"
+	editorPassword := "editor123"
+	var editorID string
+
+	err = db.Pool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, editorEmail).Scan(&editorID)
+
+	if err != nil {
+		hash, err := auth.HashPassword(editorPassword)
+		if err != nil {
+			log.Fatalf("Failed to hash password: %v", err)
+		}
+
+		err = db.Pool.QueryRow(ctx, `
+			INSERT INTO users (tenant_id, email, password_hash, role)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		`, tenantID, editorEmail, hash, "editor").Scan(&editorID)
+
+		if err != nil {
+			log.Fatalf("Failed to create editor user: %v", err)
+		}
+		fmt.Println("Created new editor user")
+	} else {
+		fmt.Println("Using existing editor user")
+	}
+
+	// Create viewer user
+	viewerEmail := "viewer@flowforge.local"
+	viewerPassword := "viewer123"
+	var viewerID string
+
+	err = db.Pool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, viewerEmail).Scan(&viewerID)
+
+	if err != nil {
+		hash, err := auth.HashPassword(viewerPassword)
+		if err != nil {
+			log.Fatalf("Failed to hash password: %v", err)
+		}
+
+		err = db.Pool.QueryRow(ctx, `
+			INSERT INTO users (tenant_id, email, password_hash, role)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		`, tenantID, viewerEmail, hash, "viewer").Scan(&viewerID)
+
+		if err != nil {
+			log.Fatalf("Failed to create viewer user: %v", err)
+		}
+		fmt.Println("Created new viewer user")
+	} else {
+		fmt.Println("Using existing viewer user")
+	}
+
 	fmt.Printf("\n=== Seed Complete ===\n")
-	fmt.Printf("Email: %s\n", email)
-	fmt.Printf("Password: %s\n", password)
+	fmt.Printf("Admin - Email: %s, Password: %s\n", email, password)
+	fmt.Printf("Editor - Email: %s, Password: %s\n", editorEmail, editorPassword)
+	fmt.Printf("Viewer - Email: %s, Password: %s\n", viewerEmail, viewerPassword)
 	fmt.Printf("\nLogin with POST /api/v1/auth/login\n")
 }
