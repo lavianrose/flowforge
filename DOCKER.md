@@ -18,24 +18,32 @@ docker-compose up -d
 
 ## Configuration Scenarios
 
-### Scenario 1: All Services in Docker (Recommended for Production)
+### Scenario 1: All Services in Docker, Accessed from Browser (Recommended)
 
-**Use case:** Running everything inside Docker containers
+**Use case:** Running everything in Docker, accessed from host browser
 
 **`.env` configuration:**
 ```env
-NEXT_PUBLIC_API_URL=http://backend:3000/api/v1
+NEXT_PUBLIC_API_URL=http://127.0.0.1:3000/api/v1
 ```
 
 **How it works:**
 - Frontend runs in Docker container
 - Backend runs in Docker container
-- Frontend accesses backend using Docker service name (`backend`)
-- Browser accesses frontend via port mapping to `127.0.0.1:3001`
+- **Important:** Browser accesses frontend, not Docker services
+- Browser cannot resolve Docker service names like `backend`
+- Must use `127.0.0.1` so browser can connect via port mapping
+- Frontend code makes API calls to `http://127.0.0.1:3000`
+- Docker port mapping: `127.0.0.1:3000 → backend:3000`
 
 **Access URLs:**
-- Frontend: http://127.0.0.1:3001
-- Backend: http://127.0.0.1:3000
+- Frontend: http://127.0.0.1:3001 (in browser)
+- Backend API: http://127.0.0.1:3000 (for browser/external access)
+- Backend internal: http://backend:3000 (for Docker service-to-service)
+
+**⚠️ Common Mistake:**
+Using `NEXT_PUBLIC_API_URL=http://backend:3000/api/v1` will cause `ERR_NAME_NOT_RESOLVED`
+because browsers cannot resolve Docker internal service names.
 
 ### Scenario 2: Frontend Local, Backend in Docker
 
