@@ -34,6 +34,7 @@ type Engine struct {
 	runRepo      RunRepository
 	workflowRepo *repository.WorkflowRepository
 	validator    *dag.Validator
+	wg           sync.WaitGroup
 }
 
 func NewEngine(runRepo *repository.RunRepository, workflowRepo *repository.WorkflowRepository) *Engine {
@@ -71,7 +72,11 @@ func (e *Engine) Execute(ctx context.Context, workflowID, tenantID string, trigg
 	// Start execution in background — pass workflow by value to avoid data race
 	// on the pointer if the caller mutates it after Execute returns.
 	wfCopy := *workflow
-	go e.executeWorkflow(context.Background(), &wfCopy, run.ID)
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		e.executeWorkflow(context.Background(), &wfCopy, run.ID)
+	}()
 
 	return run, nil
 }
@@ -662,4 +667,10 @@ func (e *Engine) failRun(ctx context.Context, runID string, errorMsg string) {
 	if err := e.runRepo.UpdateStatus(ctx, runID, "failed", &errorMsg, nil, &now); err != nil {
 		fmt.Printf("Failed to update run status: %v\n", err)
 	}
+}
+
+// Wait blocks until all in-flight workflow executions have completed.
+// Call this before shutting down the database pool.
+func (e *Engine) Wait() {
+	e.wg.Wait()
 }

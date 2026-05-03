@@ -19,9 +19,8 @@ type WorkflowHandler struct {
 	engine       *execution.Engine
 }
 
-func NewWorkflowHandler(workflowRepo *repository.WorkflowRepository, runRepo *repository.RunRepository) *WorkflowHandler {
+func NewWorkflowHandler(workflowRepo *repository.WorkflowRepository, runRepo *repository.RunRepository, engine *execution.Engine) *WorkflowHandler {
 	validator := dag.NewValidator()
-	engine := execution.NewEngine(runRepo, workflowRepo)
 
 	return &WorkflowHandler{
 		workflowRepo: workflowRepo,

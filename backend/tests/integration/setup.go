@@ -59,6 +59,9 @@ func Setup(t *testing.T) *TestSuite {
 }
 
 func (ts *TestSuite) Teardown(t *testing.T) {
+	// Wait for in-flight workflow executions to finish before closing DB pool
+	ts.Server.WaitExecutions()
+
 	// Clean up test data
 	ctx := context.Background()
 	_, err := ts.DBPool.Exec(ctx, "DELETE FROM workflow_logs")
