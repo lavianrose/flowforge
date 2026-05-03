@@ -36,7 +36,14 @@ export default function RunsPage() {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-        {error.message}
+        <p className="font-semibold">Error loading runs</p>
+        <p className="text-sm">{error.message}</p>
+        <button
+          onClick={() => refetch()}
+          className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+        >
+          Retry
+        </button>
       </div>
     );
   }

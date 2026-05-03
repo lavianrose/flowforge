@@ -20,50 +20,54 @@ func main() {
 
 	ctx := context.Background()
 
-	// Create default tenant
+	// Try to get existing default tenant first
 	var tenantID string
-	err := db.Pool.QueryRow(ctx, `
-		INSERT INTO tenants (name)
-		VALUES ($1)
-		ON CONFLICT (name) DO NOTHING
-		RETURNING id
-	`, "Default Tenant").Scan(&tenantID)
+	err := db.Pool.QueryRow(ctx, `SELECT id FROM tenants WHERE name = $1`, "Default Tenant").Scan(&tenantID)
 
 	if err != nil {
-		log.Printf("Warning: Could not create tenant: %v", err)
-		// Try to get existing tenant
-		err = db.Pool.QueryRow(ctx, `SELECT id FROM tenants WHERE name = $1`, "Default Tenant").Scan(&tenantID)
+		// Tenant doesn't exist, create it
+		err = db.Pool.QueryRow(ctx, `
+			INSERT INTO tenants (name)
+			VALUES ($1)
+			RETURNING id
+		`, "Default Tenant").Scan(&tenantID)
+
 		if err != nil {
-			log.Fatalf("Failed to get tenant: %v", err)
+			log.Fatalf("Failed to create tenant: %v", err)
 		}
+		fmt.Println("Created new tenant")
+	} else {
+		fmt.Println("Using existing tenant")
 	}
 
 	fmt.Printf("Tenant ID: %s\n", tenantID)
 
-	// Create admin user
+	// Try to get existing admin user first
 	email := "admin@flowforge.local"
 	password := "admin123"
-
-	hash, err := auth.HashPassword(password)
-	if err != nil {
-		log.Fatalf("Failed to hash password: %v", err)
-	}
-
 	var userID string
-	err = db.Pool.QueryRow(ctx, `
-		INSERT INTO users (tenant_id, email, password_hash, role)
-		VALUES ($1, $2, $3, $4)
-		ON CONFLICT (tenant_id, email) DO NOTHING
-		RETURNING id
-	`, tenantID, email, hash, "admin").Scan(&userID)
+
+	err = db.Pool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, email).Scan(&userID)
 
 	if err != nil {
-		log.Printf("Warning: Could not create user (may already exist): %v", err)
-		// Try to get existing user
-		err = db.Pool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, email).Scan(&userID)
+		// User doesn't exist, create it
+		hash, err := auth.HashPassword(password)
 		if err != nil {
-			log.Fatalf("Failed to get user: %v", err)
+			log.Fatalf("Failed to hash password: %v", err)
 		}
+
+		err = db.Pool.QueryRow(ctx, `
+			INSERT INTO users (tenant_id, email, password_hash, role)
+			VALUES ($1, $2, $3, $4)
+			RETURNING id
+		`, tenantID, email, hash, "admin").Scan(&userID)
+
+		if err != nil {
+			log.Fatalf("Failed to create user: %v", err)
+		}
+		fmt.Println("Created new admin user")
+	} else {
+		fmt.Println("Using existing admin user")
 	}
 
 	fmt.Printf("User ID: %s\n", userID)

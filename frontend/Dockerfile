@@ -3,6 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Accept build arguments for Next.js env vars
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Copy package files
 COPY package*.json ./
 
@@ -10,9 +14,10 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline --no-audit --no-fund
 
-# Copy source code and config
+# Copy config files
 COPY next.config.ts ./
 COPY tsconfig.json ./
+COPY postcss.config.mjs ./
 
 # Copy public assets
 COPY public ./public
@@ -55,6 +60,7 @@ EXPOSE 3001
 ENV NODE_ENV=production
 ENV PORT=3001
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_API_URL=http://127.0.0.1:3000/api/v1
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \

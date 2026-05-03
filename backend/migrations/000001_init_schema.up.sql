@@ -2,7 +2,7 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Tenants table
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -10,7 +10,7 @@ CREATE TABLE tenants (
 );
 
 -- Users table
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     email VARCHAR(255) NOT NULL UNIQUE,
@@ -22,7 +22,7 @@ CREATE TABLE users (
 );
 
 -- Workflows table
-CREATE TABLE workflows (
+CREATE TABLE IF NOT EXISTS workflows (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
@@ -36,7 +36,7 @@ CREATE TABLE workflows (
 );
 
 -- Workflow versions table
-CREATE TABLE workflow_versions (
+CREATE TABLE IF NOT EXISTS workflow_versions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
     version INTEGER NOT NULL,
@@ -47,7 +47,7 @@ CREATE TABLE workflow_versions (
 );
 
 -- Workflow runs table
-CREATE TABLE workflow_runs (
+CREATE TABLE IF NOT EXISTS workflow_runs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     workflow_id UUID NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
     tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
@@ -61,7 +61,7 @@ CREATE TABLE workflow_runs (
 );
 
 -- Workflow run steps table
-CREATE TABLE workflow_run_steps (
+CREATE TABLE IF NOT EXISTS workflow_run_steps (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     run_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
     step_id VARCHAR(255) NOT NULL, -- Node ID from DAG
@@ -76,7 +76,7 @@ CREATE TABLE workflow_run_steps (
 );
 
 -- Workflow logs table
-CREATE TABLE workflow_logs (
+CREATE TABLE IF NOT EXISTS workflow_logs (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     run_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
     step_id VARCHAR(255),
@@ -87,14 +87,14 @@ CREATE TABLE workflow_logs (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_users_tenant_id ON users(tenant_id);
-CREATE INDEX idx_workflows_tenant_id ON workflows(tenant_id);
-CREATE INDEX idx_workflow_runs_workflow_id ON workflow_runs(workflow_id);
-CREATE INDEX idx_workflow_runs_tenant_id ON workflow_runs(tenant_id);
-CREATE INDEX idx_workflow_runs_status ON workflow_runs(status);
-CREATE INDEX idx_workflow_run_steps_run_id ON workflow_run_steps(run_id);
-CREATE INDEX idx_workflow_logs_run_id ON workflow_logs(run_id);
-CREATE INDEX idx_workflow_logs_created_at ON workflow_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_tenant_id ON users(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_workflows_tenant_id ON workflows(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_workflow_id ON workflow_runs(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_tenant_id ON workflow_runs(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_runs_status ON workflow_runs(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_run_steps_run_id ON workflow_run_steps(run_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_logs_run_id ON workflow_logs(run_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_logs_created_at ON workflow_logs(created_at);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -104,6 +104,11 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Drop triggers if they exist
+DROP TRIGGER IF EXISTS update_tenants_updated_at ON tenants;
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
+DROP TRIGGER IF EXISTS update_workflows_updated_at ON workflows;
 
 -- Triggers for updated_at
 CREATE TRIGGER update_tenants_updated_at BEFORE UPDATE ON tenants FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
