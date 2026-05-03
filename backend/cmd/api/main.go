@@ -22,7 +22,7 @@ func main() {
 
 	// Run migrations
 	log.Println("Running database migrations...")
-	if err := migrate.Up(); err != nil {
+	if err := migrate.Up("migrations"); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 

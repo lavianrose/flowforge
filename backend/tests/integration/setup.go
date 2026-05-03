@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"testing"
 
@@ -41,7 +43,11 @@ func Setup(t *testing.T) *TestSuite {
 	}
 
 	// Run migrations using actual migration files
-	if err := migrate.Up(); err != nil {
+	// Resolve path: this file is at backend/tests/integration/setup.go,
+	// migrations are at backend/migrations/
+	_, thisFile, _, _ := runtime.Caller(0)
+	migrationsDir := filepath.Join(filepath.Dir(thisFile), "..", "..", "migrations")
+	if err := migrate.Up(migrationsDir); err != nil {
 		t.Fatalf("Failed to run migrations: %v", err)
 	}
 

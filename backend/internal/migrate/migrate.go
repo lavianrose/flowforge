@@ -11,11 +11,19 @@ import (
 	"github.com/lavianrose/flowforge/internal/db"
 )
 
-func Up() error {
+// Up runs all *.up.sql migration files from the given directory.
+// dir should be the path to the folder containing migration files
+// (e.g. "migrations" when CWD is the project root).
+func Up(dir string) error {
 	ctx := context.Background()
-	files, err := filepath.Glob("migrations/*.up.sql")
+	pattern := filepath.Join(dir, "*.up.sql")
+	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to read migrations: %w", err)
+	}
+
+	if len(files) == 0 {
+		return fmt.Errorf("no migration files found matching %s", pattern)
 	}
 
 	sort.Strings(files)
@@ -36,11 +44,17 @@ func Up() error {
 	return nil
 }
 
-func Down() error {
+// Down runs all *.down.sql migration files from the given directory in reverse order.
+func Down(dir string) error {
 	ctx := context.Background()
-	files, err := filepath.Glob("migrations/*.down.sql")
+	pattern := filepath.Join(dir, "*.down.sql")
+	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to read migrations: %w", err)
+	}
+
+	if len(files) == 0 {
+		return fmt.Errorf("no migration files found matching %s", pattern)
 	}
 
 	sort.Sort(sort.Reverse(sort.StringSlice(files)))
