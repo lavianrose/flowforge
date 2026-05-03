@@ -3,7 +3,6 @@
 [![Backend Tests](https://github.com/lavianrose/flowforge/actions/workflows/backend-test.yml/badge.svg)](https://github.com/lavianrose/flowforge/actions/workflows/backend-test.yml)
 [![Frontend Tests](https://github.com/lavianrose/flowforge/actions/workflows/frontend-test.yml/badge.svg)](https://github.com/lavianrose/flowforge/actions/workflows/frontend-test.yml)
 [![Coverage Status](https://codecov.io/gh/lavianrose/flowforge/branch/main/graph/badge.svg)](https://codecov.io/gh/lavianrose/flowforge)
-[![Go Report Card](https://goreportcard.com/badge/github.com/lavianrose/flowforge)](https://goreportcard.com/report/github.com/lavianrose/flowforge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitHub Actions.
