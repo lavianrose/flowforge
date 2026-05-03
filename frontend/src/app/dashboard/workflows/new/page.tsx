@@ -19,6 +19,7 @@ import { api } from '@/lib/api';
 import { nodeTypes } from '@/lib/nodeTypes';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import NodeConfigPanel from '@/components/nodes/NodeConfigPanel';
+import { useSnackbar } from '@/components/Snackbar';
 
 const getDefaultConfig = (type: string) => {
   switch (type) {
@@ -43,6 +44,7 @@ export default function NewWorkflowPage() {
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const { showSnackbar } = useSnackbar();
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
@@ -94,12 +96,12 @@ export default function NewWorkflowPage() {
 
   const handleSave = async () => {
     if (!workflowName.trim()) {
-      alert('Please enter a workflow name');
+      showSnackbar('Please enter a workflow name', 'warning');
       return;
     }
 
     if (nodes.length === 0) {
-      alert('Please add at least one node');
+      showSnackbar('Please add at least one node', 'warning');
       return;
     }
 
@@ -129,7 +131,7 @@ export default function NewWorkflowPage() {
 
       router.push('/dashboard');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to create workflow');
+      showSnackbar(err instanceof Error ? err.message : 'Failed to create workflow', 'error');
     } finally {
       setSaving(false);
     }
