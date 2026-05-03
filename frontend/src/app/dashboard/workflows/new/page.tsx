@@ -216,6 +216,7 @@ export default function NewWorkflowPage() {
           </ReactFlow>
         </div>
       </div>
+      </div>
     </ProtectedRoute>
   );
 }
