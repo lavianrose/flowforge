@@ -73,6 +73,106 @@ Always complete highest priority unfinished item first.
 
 ---
 
+## Test Plan
+
+### RBAC Implementation Testing
+
+#### Pre-requisites
+- [ ] Start all services: `docker-compose up -d`
+- [ ] Run database seed: `docker-compose exec backend go run cmd/seed/main.go`
+- [ ] Verify all three users created in database
+
+#### Test Users
+- **Admin**: admin@flowforge.local / admin123 (full access)
+- **Editor**: editor@flowforge.local / editor123 (create, edit, trigger - no delete)
+- **Viewer**: viewer@flowforge.local / viewer123 (read-only)
+
+#### Frontend Permission Tests
+- [ ] Login with admin user
+  - [ ] Verify role badge shows "Admin" in red
+  - [ ] Verify "Create Workflow" button is visible
+  - [ ] Verify "Run" button is visible on workflow cards
+  - [ ] Verify "Edit Workflow" button is visible
+  - [ ] Verify "Delete" button is visible
+  - [ ] Create a new workflow successfully
+  - [ ] Edit an existing workflow successfully
+  - [ ] Trigger a workflow successfully
+  - [ ] Delete a workflow successfully
+
+- [ ] Login with editor user
+  - [ ] Verify role badge shows "Editor" in blue
+  - [ ] Verify "Create Workflow" button is visible
+  - [ ] Verify "Run" button is visible on workflow cards
+  - [ ] Verify "Edit Workflow" button is visible
+  - [ ] Verify "Delete" button is NOT visible
+  - [ ] Create a new workflow successfully
+  - [ ] Edit an existing workflow successfully
+  - [ ] Trigger a workflow successfully
+  - [ ] Attempt to delete workflow → button hidden
+
+- [ ] Login with viewer user
+  - [ ] Verify role badge shows "Viewer" in gray
+  - [ ] Verify "Create Workflow" button is NOT visible
+  - [ ] Verify "Run" button is NOT visible on workflow cards
+  - [ ] Verify "Edit Workflow" button is NOT visible
+  - [ ] Verify "Delete" button is NOT visible
+  - [ ] View workflow list successfully
+  - [ ] View workflow details successfully
+  - [ ] View run history successfully
+  - [ ] Attempt to access /dashboard/workflows/new → redirected
+
+#### Backend API Permission Tests
+- [ ] Test Viewer permissions
+  - [ ] GET /api/v1/workflows → 200 OK
+  - [ ] POST /api/v1/workflows → 403 Forbidden
+  - [ ] PUT /api/v1/workflows/:id → 403 Forbidden
+  - [ ] POST /api/v1/workflows/:id/trigger → 403 Forbidden
+  - [ ] DELETE /api/v1/workflows/:id → 403 Forbidden
+
+- [ ] Test Editor permissions
+  - [ ] GET /api/v1/workflows → 200 OK
+  - [ ] POST /api/v1/workflows → 201 Created
+  - [ ] PUT /api/v1/workflows/:id → 200 OK
+  - [ ] POST /api/v1/workflows/:id/trigger → 200 OK
+  - [ ] DELETE /api/v1/workflows/:id → 403 Forbidden
+
+- [ ] Test Admin permissions
+  - [ ] GET /api/v1/workflows → 200 OK
+  - [ ] POST /api/v1/workflows → 201 Created
+  - [ ] PUT /api/v1/workflows/:id → 200 OK
+  - [ ] POST /api/v1/workflows/:id/trigger → 200 OK
+  - [ ] DELETE /api/v1/workflows/:id → 200 OK
+
+#### Cross-Tenant Isolation Tests
+- [ ] Create workflow as tenant A user
+- [ ] Login as tenant B user
+- [ ] Verify tenant B cannot access tenant A's workflows (404/403)
+
+#### Authentication Tests
+- [ ] Test expired JWT → 401 Unauthorized
+- [ ] Test invalid JWT → 401 Unauthorized
+- [ ] Test missing Authorization header → 401 Unauthorized
+- [ ] Test malformed Authorization header → 401 Unauthorized
+
+#### UI/UX Tests
+- [ ] Verify role badge color coding (Admin=red, Editor=blue, Viewer=gray)
+- [ ] Verify smooth hiding/showing of buttons based on permissions
+- [ ] Verify no console errors during permission checks
+- [ ] Verify loading states work correctly
+- [ ] Verify error messages display properly
+
+#### Integration Tests (Manual)
+- [ ] Create workflow as Admin
+- [ ] Logout and login as Editor
+- [ ] Verify Editor can see and edit the workflow
+- [ ] Logout and login as Viewer
+- [ ] Verify Viewer can view but not edit the workflow
+- [ ] Test version rollback with different roles
+- [ ] Test schedule creation with different roles
+- [ ] Test webhook creation with different roles
+
+---
+
 ## Summary
 
 ### Backend Features (100% Complete ✅)
