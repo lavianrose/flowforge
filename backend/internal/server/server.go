@@ -145,3 +145,8 @@ func (s *Server) Start() error {
 	// Start HTTP server
 	return s.app.Listen(":" + s.cfg.Port)
 }
+
+// GetApp returns the Fiber app for testing purposes
+func (s *Server) GetApp() *fiber.App {
+	return s.app
+}
