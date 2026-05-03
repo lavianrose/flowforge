@@ -3,6 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { WorkflowRun } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { useRun, useTriggerWorkflow } from "@/lib/hooks";
 import { connectSSE } from "@/lib/sse";
 
@@ -23,12 +24,8 @@ interface Step {
 export default function RunDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const {
-    data: runData,
-    isLoading,
-    error,
-    refetch,
-  } = useRun(params.id as string);
+  const { token } = useAuth();
+  const { data: runData, isLoading, error } = useRun(params.id as string);
   const retryMutation = useTriggerWorkflow();
   const [retryError, setRetryError] = useState<string | null>(null);
   const [run, setRun] = useState(runData?.run || null);
@@ -44,7 +41,7 @@ export default function RunDetailPage() {
       setRun(runData.run);
       setSteps(runData.steps || []);
 
-      // Auto-enable live mode if run is still running
+      // Always enable live mode — updates arrive in real-time automatically
       if (
         runData.run.status === "running" ||
         runData.run.status === "pending"
@@ -56,7 +53,12 @@ export default function RunDetailPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
-    if (!(liveMode && run)) {
+    if (!run) {
+      return;
+    }
+
+    // Only connect SSE for active runs
+    if (run.status !== "running" && run.status !== "pending") {
       return;
     }
 
@@ -88,7 +90,8 @@ export default function RunDetailPage() {
       (err) => {
         console.error("SSE error:", err);
         setLiveMode(false);
-      }
+      },
+      token
     );
 
     return () => {
@@ -96,7 +99,7 @@ export default function RunDetailPage() {
         cleanupRef.current();
       }
     };
-  }, [liveMode, run, params.id]);
+  }, [run, params.id, token]);
 
   useEffect(() => {
     if (run?.status !== "running" && run?.status !== "pending") {
@@ -158,12 +161,12 @@ export default function RunDetailPage() {
 
   const started = run.started_at ? new Date(run.started_at) : null;
   const completed = run.completed_at ? new Date(run.completed_at) : null;
-  const duration =
-    started && completed
-      ? Math.round((completed.getTime() - started.getTime()) / 1000)
-      : started
-        ? Math.round((now - started.getTime()) / 1000)
-        : null;
+  let duration: number | null = null;
+  if (started && completed) {
+    duration = Math.round((completed.getTime() - started.getTime()) / 1000);
+  } else if (started) {
+    duration = Math.round((now - started.getTime()) / 1000);
+  }
 
   return (
     <div>
@@ -200,35 +203,15 @@ export default function RunDetailPage() {
                   },
                 });
               }}
+              type="button"
             >
               {retryMutation.isPending ? "Retrying..." : "Retry Workflow"}
             </button>
           )}
           <button
-            className={`rounded-md px-4 py-2 ${
-              liveMode
-                ? "bg-green-600 text-white hover:bg-green-700"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-            disabled={run.status !== "running" && run.status !== "pending"}
-            onClick={() => {
-              setLiveMode(!liveMode);
-              if (!liveMode) {
-                refetch();
-              }
-            }}
-          >
-            {liveMode ? "Live" : "Live Updates"}
-          </button>
-          <button
-            className="rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700"
-            onClick={() => refetch()}
-          >
-            Refresh
-          </button>
-          <button
             className="rounded-md bg-gray-100 px-4 py-2 text-gray-700 hover:bg-gray-200"
             onClick={() => router.back()}
+            type="button"
           >
             Back
           </button>
