@@ -1,8 +1,14 @@
 package execution
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -79,6 +85,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 
 	// Execute each level
 	nodeOutputs := make(map[string]interface{})
+	var outputsMu sync.Mutex
 	for _, level := range levels {
 		// Execute all nodes in this level in parallel
 		var wg sync.WaitGroup
@@ -86,7 +93,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 
 		for _, nodeID := range level {
 			wg.Add(1)
-			go e.executeNode(ctx, &wg, errChan, workflow, run, nodeID, nodeOutputs)
+			go e.executeNode(ctx, &wg, errChan, workflow, run, nodeID, nodeOutputs, &outputsMu)
 		}
 
 		wg.Wait()
@@ -113,7 +120,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 	}
 }
 
-func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, run *models.WorkflowRun, nodeID string, outputs map[string]interface{}) {
+func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, run *models.WorkflowRun, nodeID string, outputs map[string]interface{}, outputsMu *sync.Mutex) {
 	defer wg.Done()
 
 	// Find node
@@ -130,12 +137,20 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 		return
 	}
 
+	// Snapshot inputs for this node (safe copy of current outputs)
+	outputsMu.Lock()
+	inputsCopy := make(map[string]interface{})
+	for k, v := range outputs {
+		inputsCopy[k] = v
+	}
+	outputsMu.Unlock()
+
 	// Create step
 	step := &models.WorkflowRunStep{
 		RunID:  run.ID,
 		StepID: nodeID,
 		Status: "pending",
-		Input:  outputs,
+		Input:  inputsCopy,
 	}
 
 	if err := e.runRepo.CreateStep(ctx, step); err != nil {
@@ -153,7 +168,7 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 	}
 
 	// Execute based on type
-	output, err := e.executeNodeLogic(ctx, node, outputs)
+	output, err := e.executeNodeLogic(ctx, node, inputsCopy)
 	if err != nil {
 		step.Status = "failed"
 		step.Error = err.Error()
@@ -174,32 +189,420 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 		return
 	}
 
-	// Store output for next nodes
+	// Store output for next nodes (thread-safe)
+	outputsMu.Lock()
 	outputs[nodeID] = output
+	outputsMu.Unlock()
 }
 
 func (e *Engine) executeNodeLogic(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
 	switch node.Type {
 	case "delay":
-		seconds := int(node.Config["seconds"].(float64))
-		time.Sleep(time.Duration(seconds) * time.Second)
-		return map[string]interface{}{"message": fmt.Sprintf("Delayed %d seconds", seconds)}, nil
-
+		return e.executeDelay(ctx, node)
 	case "http":
-		// TODO: Implement HTTP request
-		return map[string]interface{}{"message": "HTTP execution not implemented"}, nil
-
+		return e.executeHTTP(ctx, node, inputs)
 	case "script":
-		// TODO: Implement script execution
-		return map[string]interface{}{"message": "Script execution not implemented"}, nil
-
+		return e.executeScript(ctx, node, inputs)
 	case "condition":
-		// TODO: Implement condition evaluation
-		return map[string]interface{}{"message": "Condition evaluation not implemented"}, nil
-
+		return e.executeCondition(ctx, node, inputs)
 	default:
 		return nil, fmt.Errorf("unknown node type: %s", node.Type)
 	}
+}
+
+func (e *Engine) executeDelay(ctx context.Context, node *models.WorkflowNode) (map[string]interface{}, error) {
+	seconds := 0
+	switch v := node.Config["seconds"].(type) {
+	case float64:
+		seconds = int(v)
+	case string:
+		var err error
+		seconds, err = strconv.Atoi(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid seconds value: %v", v)
+		}
+	default:
+		return nil, fmt.Errorf("invalid seconds type in config")
+	}
+
+	select {
+	case <-time.After(time.Duration(seconds) * time.Second):
+		return map[string]interface{}{"message": fmt.Sprintf("Delayed %d seconds", seconds)}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+func (e *Engine) executeHTTP(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+	url, _ := node.Config["url"].(string)
+	method, _ := node.Config["method"].(string)
+
+	if url == "" {
+		return nil, fmt.Errorf("http node: url is required")
+	}
+	if method == "" {
+		method = "GET"
+	}
+	method = strings.ToUpper(method)
+
+	var body io.Reader
+	if bodyVal, ok := node.Config["body"]; ok && bodyVal != nil {
+		switch v := bodyVal.(type) {
+		case string:
+			// Resolve template variables from inputs
+			resolved := e.resolveTemplate(v, inputs)
+			body = strings.NewReader(resolved)
+		default:
+			b, err := json.Marshal(v)
+			if err != nil {
+				return nil, fmt.Errorf("http node: failed to marshal body: %w", err)
+			}
+			body = bytes.NewReader(b)
+		}
+	}
+
+	// Resolve template variables in URL
+	url = e.resolveTemplate(url, inputs)
+
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, fmt.Errorf("http node: failed to create request: %w", err)
+	}
+
+	// Set headers
+	if headers, ok := node.Config["headers"].(map[string]interface{}); ok {
+		for k, v := range headers {
+			if strVal, ok := v.(string); ok {
+				req.Header.Set(k, e.resolveTemplate(strVal, inputs))
+			}
+		}
+	}
+
+	// Set Content-Type default
+	if req.Header.Get("Content-Type") == "" && body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("http node: request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("http node: failed to read response: %w", err)
+	}
+
+	result := map[string]interface{}{
+		"status_code": resp.StatusCode,
+		"status":      resp.Status,
+		"headers":     flattenHeaders(resp.Header),
+		"body":        string(respBody),
+	}
+
+	// Try to parse body as JSON
+	var jsonBody interface{}
+	if err := json.Unmarshal(respBody, &jsonBody); err == nil {
+		result["json"] = jsonBody
+	}
+
+	if resp.StatusCode >= 400 {
+		result["error"] = fmt.Sprintf("HTTP request returned status %d", resp.StatusCode)
+	}
+
+	return result, nil
+}
+
+func (e *Engine) executeScript(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+	code, _ := node.Config["code"].(string)
+	if code == "" {
+		return nil, fmt.Errorf("script node: code is required")
+	}
+
+	// Build a sandboxed evaluation context with inputs available
+	result := make(map[string]interface{})
+
+	// Execute simple expressions supported:
+	// 1. "transform" mode: expects a "return" statement with JSON-like expression
+	// 2. We evaluate simple JSON transforms using Go's text/template style
+
+	// For MVP: support simple JSON path extraction and transformation
+	// Pattern: return inputs.node_id.field or return {"key": "value"}
+	code = strings.TrimSpace(code)
+
+	// Check if it's a simple return statement with JSON
+	if strings.HasPrefix(code, "return ") {
+		expr := strings.TrimPrefix(code, "return ")
+		expr = strings.TrimSpace(expr)
+
+		// Resolve template variables in the expression
+		resolved := e.resolveTemplate(expr, inputs)
+
+		// Try to parse as JSON
+		var parsed interface{}
+		if err := json.Unmarshal([]byte(resolved), &parsed); err == nil {
+			switch v := parsed.(type) {
+			case map[string]interface{}:
+				return v, nil
+			default:
+				result["result"] = v
+				return result, nil
+			}
+		}
+
+		// Try as string value
+		resolved = strings.Trim(resolved, "\"")
+		result["result"] = resolved
+		return result, nil
+	}
+
+	// For direct JSON transform mode
+	var jsonTransform interface{}
+	if err := json.Unmarshal([]byte(e.resolveTemplate(code, inputs)), &jsonTransform); err == nil {
+		switch v := jsonTransform.(type) {
+		case map[string]interface{}:
+			return v, nil
+		default:
+			result["result"] = v
+			return result, nil
+		}
+	}
+
+	// Fallback: return the raw code output with inputs available
+	result["output"] = e.resolveTemplate(code, inputs)
+	return result, nil
+}
+
+func (e *Engine) executeCondition(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+	expression, _ := node.Config["expression"].(string)
+	if expression == "" {
+		return nil, fmt.Errorf("condition node: expression is required")
+	}
+
+	// Resolve template variables in expression
+	expression = e.resolveTemplate(expression, inputs)
+
+	// Evaluate the expression
+	result, err := evaluateExpression(expression)
+	if err != nil {
+		return nil, fmt.Errorf("condition node: failed to evaluate: %w", err)
+	}
+
+	passed, ok := result.(bool)
+	if !ok {
+		// Try numeric comparison: non-zero = true
+		if num, ok := result.(float64); ok {
+			passed = num != 0
+		} else {
+			passed = result != nil
+		}
+	}
+
+	return map[string]interface{}{
+		"passed":     passed,
+		"expression": expression,
+		"result":     fmt.Sprintf("%v", result),
+	}, nil
+}
+
+// resolveTemplate replaces {{inputs.node_id}} or {{inputs.node_id.field}} placeholders
+// with actual values from the inputs map.
+func (e *Engine) resolveTemplate(tmpl string, inputs map[string]interface{}) string {
+	result := tmpl
+
+	// Find all {{...}} patterns
+	for {
+		start := strings.Index(result, "{{")
+		if start == -1 {
+			break
+		}
+		end := strings.Index(result, "}}")
+		if end == -1 || end <= start {
+			break
+		}
+
+		path := strings.TrimSpace(result[start+2 : end])
+
+		// Remove "inputs." prefix
+		path = strings.TrimPrefix(path, "inputs.")
+
+		var value interface{}
+		value = inputs
+
+		// Navigate the path
+		parts := strings.Split(path, ".")
+		valid := true
+		for _, part := range parts {
+			if part == "" {
+				continue
+			}
+			m, ok := value.(map[string]interface{})
+			if !ok {
+				valid = false
+				break
+			}
+			value, ok = m[part]
+			if !ok {
+				valid = false
+				break
+			}
+		}
+
+		if valid {
+			var replacement string
+			switch v := value.(type) {
+			case string:
+				replacement = v
+			case nil:
+				replacement = ""
+			default:
+				b, _ := json.Marshal(v)
+				replacement = string(b)
+			}
+			result = result[:start] + replacement + result[end+2:]
+		} else {
+			// Leave placeholder as-is if path not found
+			result = result[:start] + "" + result[end+2:]
+		}
+	}
+
+	return result
+}
+
+// evaluateExpression evaluates simple comparison expressions.
+// Supports: ==, !=, >, <, >=, <= operators and basic string/number comparisons.
+func evaluateExpression(expr string) (interface{}, error) {
+	expr = strings.TrimSpace(expr)
+
+	// Handle boolean literals
+	if expr == "true" {
+		return true, nil
+	}
+	if expr == "false" {
+		return false, nil
+	}
+
+	// Try comparison operators (order matters: check >= before >)
+	operators := []string{">=", "<=", "!=", "==", ">", "<"}
+	for _, op := range operators {
+		parts := strings.SplitN(expr, op, 2)
+		if len(parts) == 2 {
+			left := strings.TrimSpace(parts[0])
+			right := strings.TrimSpace(parts[1])
+
+			leftVal, err := parseValue(left)
+			if err != nil {
+				return nil, err
+			}
+			rightVal, err := parseValue(right)
+			if err != nil {
+				return nil, err
+			}
+
+			return compare(leftVal, rightVal, op)
+		}
+	}
+
+	// If no operator found, try as a value
+	return parseValue(expr)
+}
+
+func parseValue(s string) (interface{}, error) {
+	s = strings.TrimSpace(s)
+
+	// Remove surrounding quotes
+	if len(s) >= 2 && ((s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'')) {
+		return s[1 : len(s)-1], nil
+	}
+
+	// Try as number
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return f, nil
+	}
+
+	// Try as boolean
+	if s == "true" {
+		return true, nil
+	}
+	if s == "false" {
+		return false, nil
+	}
+
+	// Return as string
+	return s, nil
+}
+
+func compare(left, right interface{}, op string) (bool, error) {
+	// Try numeric comparison
+	leftNum, leftIsNum := toFloat64(left)
+	rightNum, rightIsNum := toFloat64(right)
+
+	if leftIsNum && rightIsNum {
+		switch op {
+		case "==":
+			return leftNum == rightNum, nil
+		case "!=":
+			return leftNum != rightNum, nil
+		case ">":
+			return leftNum > rightNum, nil
+		case "<":
+			return leftNum < rightNum, nil
+		case ">=":
+			return leftNum >= rightNum, nil
+		case "<=":
+			return leftNum <= rightNum, nil
+		}
+	}
+
+	// String comparison
+	leftStr := fmt.Sprintf("%v", left)
+	rightStr := fmt.Sprintf("%v", right)
+
+	switch op {
+	case "==":
+		return leftStr == rightStr, nil
+	case "!=":
+		return leftStr != rightStr, nil
+	case ">":
+		return leftStr > rightStr, nil
+	case "<":
+		return leftStr < rightStr, nil
+	case ">=":
+		return leftStr >= rightStr, nil
+	case "<=":
+		return leftStr <= rightStr, nil
+	}
+
+	return false, fmt.Errorf("unsupported operator: %s", op)
+}
+
+func toFloat64(v interface{}) (float64, bool) {
+	switch val := v.(type) {
+	case float64:
+		return val, true
+	case float32:
+		return float64(val), true
+	case int:
+		return float64(val), true
+	case int64:
+		return float64(val), true
+	case string:
+		f, err := strconv.ParseFloat(val, 64)
+		return f, err == nil
+	}
+	return 0, false
+}
+
+func flattenHeaders(h http.Header) map[string]string {
+	m := make(map[string]string)
+	for k, vals := range h {
+		if len(vals) > 0 {
+			m[k] = vals[0]
+		}
+	}
+	return m
 }
 
 func (e *Engine) failRun(ctx context.Context, run *models.WorkflowRun, errorMsg string) {
