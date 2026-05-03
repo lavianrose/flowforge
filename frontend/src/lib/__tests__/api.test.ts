@@ -151,7 +151,7 @@ describe('API', () => {
   describe('getWorkflows', () => {
     it('should get workflows list', async () => {
       const mockWorkflows = {
-        workflows: [
+        data: [
           {
             id: 'wf-1',
             name: 'Test Workflow',
@@ -159,6 +159,11 @@ describe('API', () => {
             active: true,
           },
         ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+        },
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
@@ -229,13 +234,18 @@ describe('API', () => {
   describe('getRuns', () => {
     it('should get workflow runs', async () => {
       const mockRuns = {
-        runs: [
+        data: [
           {
             id: 'run-1',
             workflow_id: 'wf-1',
             status: 'success',
           },
         ],
+        pagination: {
+          page: 1,
+          limit: 10,
+          total: 1,
+        },
       };
 
       (global.fetch as jest.Mock).mockResolvedValue({
