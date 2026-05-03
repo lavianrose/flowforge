@@ -1,12 +1,12 @@
 export interface SSEMessage {
-  event: string;
   data: unknown;
+  event: string;
 }
 
 export function connectSSE(
   url: string,
   onMessage: (message: SSEMessage) => void,
-  onError?: (error: Error) => void,
+  onError?: (error: Error) => void
 ): () => void {
   const eventSource = new EventSource(url, {
     withCredentials: true,

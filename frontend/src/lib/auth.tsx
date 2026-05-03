@@ -1,22 +1,23 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { api, LoginRequest, LoginResponse } from './api';
+import type React from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { api, type LoginRequest, type LoginResponse } from "./api";
 
 interface User {
-  id: string;
   email: string;
+  id: string;
   role: string;
   tenant_id: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  token: string | null;
+  can: (action: string) => boolean;
+  loading: boolean;
   login: (data: LoginRequest) => Promise<void>;
   logout: () => void;
-  loading: boolean;
-  can: (action: string) => boolean;
+  token: string | null;
+  user: User | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,18 +29,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check for stored token on mount
-    const storedToken = localStorage.getItem('token');
+    const storedToken = localStorage.getItem("token");
     if (storedToken) {
       setToken(storedToken);
       api.setToken(storedToken);
 
       // Verify token and get user
-      api.getMe()
+      api
+        .getMe()
         .then((data: any) => {
           setUser(data);
         })
         .catch(() => {
-          localStorage.removeItem('token');
+          localStorage.removeItem("token");
           setToken(null);
           api.clearToken();
         })
@@ -58,31 +60,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(newToken);
     setUser(newUser);
     api.setToken(newToken);
-    localStorage.setItem('token', newToken);
+    localStorage.setItem("token", newToken);
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
     api.clearToken();
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
   };
 
   const can = (action: string): boolean => {
-    if (!user) return false;
+    if (!user) {
+      return false;
+    }
 
     const role = user.role;
 
     switch (action) {
-      case 'view':
+      case "view":
         return true;
-      case 'create':
-      case 'edit':
-      case 'trigger':
-      case 'rollback':
-        return role === 'editor' || role === 'admin';
-      case 'delete':
-        return role === 'admin';
+      case "create":
+      case "edit":
+      case "trigger":
+      case "rollback":
+        return role === "editor" || role === "admin";
+      case "delete":
+        return role === "admin";
       default:
         return false;
     }
@@ -98,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

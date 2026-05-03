@@ -1,82 +1,88 @@
-import React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
-import 'reactflow/dist/style.css';
+import { Handle, type NodeProps, Position } from "reactflow";
+import "reactflow/dist/style.css";
 
 const nodeStyles: Record<string, string> = {
-  http: 'bg-blue-100 border-blue-500',
-  delay: 'bg-yellow-100 border-yellow-500',
-  script: 'bg-purple-100 border-purple-500',
-  condition: 'bg-green-100 border-green-500',
+  http: "bg-blue-100 border-blue-500",
+  delay: "bg-yellow-100 border-yellow-500",
+  script: "bg-purple-100 border-purple-500",
+  condition: "bg-green-100 border-green-500",
 };
 
 const iconMap: Record<string, string> = {
-  http: '🌐',
-  delay: '⏱️',
-  script: '📜',
-  condition: '❓',
+  http: "🌐",
+  delay: "⏱️",
+  script: "📜",
+  condition: "❓",
 };
 
-function getConfigSummary(nodeType: string, config: Record<string, unknown>): string {
+function getConfigSummary(
+  nodeType: string,
+  config: Record<string, unknown>
+): string {
   switch (nodeType) {
-    case 'http': {
-      const method = (config.method as string) || 'GET';
-      const url = (config.url as string) || '(no url)';
-      const shortUrl = url.length > 25 ? url.slice(0, 25) + '...' : url;
+    case "http": {
+      const method = (config.method as string) || "GET";
+      const url = (config.url as string) || "(no url)";
+      const shortUrl = url.length > 25 ? url.slice(0, 25) + "..." : url;
       return `${method} ${shortUrl}`;
     }
-    case 'delay': {
+    case "delay": {
       const secs = config.seconds || 0;
       return `${secs}s delay`;
     }
-    case 'script': {
-      const code = (config.code as string) || '';
-      if (!code) return '(no code)';
-      const short = code.length > 25 ? code.slice(0, 25) + '...' : code;
+    case "script": {
+      const code = (config.code as string) || "";
+      if (!code) {
+        return "(no code)";
+      }
+      const short = code.length > 25 ? code.slice(0, 25) + "..." : code;
       return short;
     }
-    case 'condition': {
-      const expr = (config.expression as string) || '';
-      if (!expr) return '(no expression)';
-      const short = expr.length > 25 ? expr.slice(0, 25) + '...' : expr;
+    case "condition": {
+      const expr = (config.expression as string) || "";
+      if (!expr) {
+        return "(no expression)";
+      }
+      const short = expr.length > 25 ? expr.slice(0, 25) + "..." : expr;
       return short;
     }
     default:
-      return '';
+      return "";
   }
 }
 
 export default function CustomNode({ data, selected }: NodeProps) {
   const nodeType = data.type as string;
   const config = (data.config as Record<string, unknown>) || {};
-  const bgColor = nodeStyles[nodeType] || 'bg-gray-100 border-gray-500';
-  const icon = iconMap[nodeType] || '⚙️';
+  const bgColor = nodeStyles[nodeType] || "bg-gray-100 border-gray-500";
+  const icon = iconMap[nodeType] || "⚙️";
   const summary = getConfigSummary(nodeType, config);
 
   const hasEmptyRequired =
-    (nodeType === 'http' && !config.url) ||
-    (nodeType === 'script' && !config.code) ||
-    (nodeType === 'condition' && !config.expression);
+    (nodeType === "http" && !config.url) ||
+    (nodeType === "script" && !config.code) ||
+    (nodeType === "condition" && !config.expression);
 
   return (
     <div
-      className={`px-4 py-2 rounded-lg border-2 ${bgColor} ${
-        selected ? 'ring-2 ring-indigo-500' : ''
+      className={`rounded-lg border-2 px-4 py-2 ${bgColor} ${
+        selected ? "ring-2 ring-indigo-500" : ""
       } cursor-pointer`}
-      style={{ minWidth: '160px' }}
+      style={{ minWidth: "160px" }}
     >
-      <Handle type="target" position={Position.Top} className="w-3 h-3" />
+      <Handle className="h-3 w-3" position={Position.Top} type="target" />
       <div className="flex items-center gap-2">
         <span className="text-xl">{icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-sm truncate">{data.label}</div>
-          <div className="text-xs text-gray-600">{nodeType}</div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-semibold text-sm">{data.label}</div>
+          <div className="text-gray-600 text-xs">{nodeType}</div>
         </div>
       </div>
       {summary && (
-        <div className="mt-1 pt-1 border-t border-gray-300/50">
+        <div className="mt-1 border-gray-300/50 border-t pt-1">
           <div
-            className={`text-xs truncate font-mono ${
-              hasEmptyRequired ? 'text-red-500' : 'text-gray-500'
+            className={`truncate font-mono text-xs ${
+              hasEmptyRequired ? "text-red-500" : "text-gray-500"
             }`}
             title={summary}
           >
@@ -84,7 +90,7 @@ export default function CustomNode({ data, selected }: NodeProps) {
           </div>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3" />
+      <Handle className="h-3 w-3" position={Position.Bottom} type="source" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
 
 export interface LoginRequest {
   email: string;
@@ -16,10 +17,9 @@ export interface LoginResponse {
 }
 
 export interface Workflow {
-  id: string;
-  tenant_id: string;
-  name: string;
-  description: string;
+  active: boolean;
+  created_at: string;
+  created_by: string;
   definition: {
     nodes: Array<{
       id: string;
@@ -34,30 +34,30 @@ export interface Workflow {
       target: string;
     }>;
   };
+  description: string;
+  id: string;
+  name: string;
+  tenant_id: string;
   timeout_seconds: number;
-  active: boolean;
-  created_by: string;
-  created_at: string;
   updated_at: string;
 }
 
 export interface WorkflowRun {
-  id: string;
-  workflow_id: string;
-  tenant_id: string;
-  status: 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
-  error?: string;
-  started_at?: string;
   completed_at?: string;
-  created_by?: string;
   created_at: string;
+  created_by?: string;
+  error?: string;
+  id: string;
+  started_at?: string;
+  status: "pending" | "running" | "success" | "failed" | "cancelled";
+  tenant_id: string;
   triggered_by: string;
+  workflow_id: string;
 }
 
 export interface WorkflowVersion {
-  id: string;
-  workflow_id: string;
-  version: number;
+  created_at: string;
+  created_by: string;
   definition: {
     nodes: Array<{
       id: string;
@@ -72,18 +72,16 @@ export interface WorkflowVersion {
       target: string;
     }>;
   };
-  created_by: string;
-  created_at: string;
+  id: string;
+  version: number;
+  workflow_id: string;
 }
 
 export interface HealthStats {
   active_runs: number;
-  success_rate: number;
-  failure_rate: number;
   avg_duration_seconds: number;
-  total_runs_24h: number;
-  success_runs_24h: number;
   failed_runs_24h: number;
+  failure_rate: number;
   hourly_stats: Array<{
     hour: number;
     total_runs: number;
@@ -91,6 +89,9 @@ export interface HealthStats {
     failed_runs: number;
     avg_duration: number;
   }>;
+  success_rate: number;
+  success_runs_24h: number;
+  total_runs_24h: number;
 }
 
 export class APIClient {
@@ -109,12 +110,12 @@ export class APIClient {
     options: RequestInit = {}
   ): Promise<T> {
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...(options.headers as Record<string, string>),
     };
 
     if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      headers["Authorization"] = `Bearer ${this.token}`;
     }
 
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -123,8 +124,10 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || error.message || 'Request failed');
+      const error = await response
+        .json()
+        .catch(() => ({ error: "Request failed" }));
+      throw new Error(error.error || error.message || "Request failed");
     }
 
     return response.json();
@@ -132,19 +135,21 @@ export class APIClient {
 
   // Auth
   async login(data: LoginRequest): Promise<LoginResponse> {
-    return this.request<LoginResponse>('/auth/login', {
-      method: 'POST',
+    return this.request<LoginResponse>("/auth/login", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async getMe() {
-    return this.request('/auth/me');
+    return this.request("/auth/me");
   }
 
   // Workflows
   async getWorkflows(): Promise<{ workflows: Workflow[] }> {
-    const response = await this.request<{ data: Workflow[]; pagination: any }>('/workflows');
+    const response = await this.request<{ data: Workflow[]; pagination: any }>(
+      "/workflows"
+    );
     return { workflows: response.data || [] };
   }
 
@@ -153,38 +158,40 @@ export class APIClient {
   }
 
   async createWorkflow(data: Partial<Workflow>): Promise<Workflow> {
-    return this.request('/workflows', {
-      method: 'POST',
+    return this.request("/workflows", {
+      method: "POST",
       body: JSON.stringify(data),
     });
   }
 
   async updateWorkflow(id: string, data: Partial<Workflow>): Promise<Workflow> {
     return this.request(`/workflows/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
   async deleteWorkflow(id: string): Promise<void> {
     return this.request(`/workflows/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
   async triggerWorkflow(id: string): Promise<WorkflowRun> {
     return this.request(`/workflows/${id}/trigger`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
-  async getWorkflowVersions(id: string): Promise<{ versions: WorkflowVersion[] }> {
+  async getWorkflowVersions(
+    id: string
+  ): Promise<{ versions: WorkflowVersion[] }> {
     return this.request(`/workflows/${id}/versions`);
   }
 
   async rollbackWorkflow(id: string, version: number): Promise<Workflow> {
     return this.request(`/workflows/${id}/rollback/${version}`, {
-      method: 'POST',
+      method: "POST",
     });
   }
 
@@ -194,14 +201,17 @@ export class APIClient {
   }
 
   async getRuns(workflowId?: string): Promise<{ runs: WorkflowRun[] }> {
-    const params = workflowId ? `?workflow_id=${workflowId}` : '';
-    const response = await this.request<{ data: WorkflowRun[]; pagination: any }>(`/runs${params}`);
+    const params = workflowId ? `?workflow_id=${workflowId}` : "";
+    const response = await this.request<{
+      data: WorkflowRun[];
+      pagination: any;
+    }>(`/runs${params}`);
     return { runs: response.data || [] };
   }
 
   // Stats
   async getHealthStats(): Promise<HealthStats> {
-    return this.request('/stats/health');
+    return this.request("/stats/health");
   }
 }
 

@@ -1,20 +1,20 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { api } from "../api";
 import {
-  useWorkflows,
-  useWorkflow,
   useCreateWorkflow,
-  useUpdateWorkflow,
   useDeleteWorkflow,
-  useTriggerWorkflow,
-  useWorkflowVersions,
   useRollbackWorkflow,
-  useRuns
-} from '../hooks';
-import { api } from '../api';
+  useRuns,
+  useTriggerWorkflow,
+  useUpdateWorkflow,
+  useWorkflow,
+  useWorkflows,
+  useWorkflowVersions,
+} from "../hooks";
 
 // Mock the API module
-jest.mock('../api', () => ({
+jest.mock("../api", () => ({
   api: {
     getWorkflows: jest.fn(),
     getWorkflow: jest.fn(),
@@ -47,25 +47,25 @@ function createWrapper() {
   );
 }
 
-describe('Workflow Hooks', () => {
+describe("Workflow Hooks", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('useWorkflows', () => {
-    it('should fetch workflows successfully', async () => {
+  describe("useWorkflows", () => {
+    it("should fetch workflows successfully", async () => {
       const mockWorkflows = {
         workflows: [
           {
-            id: 'wf-1',
-            name: 'Test Workflow',
-            description: 'Test',
+            id: "wf-1",
+            name: "Test Workflow",
+            description: "Test",
             active: true,
             definition: { nodes: [], edges: [] },
             timeout_seconds: 300,
-            created_by: 'user-1',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
+            created_by: "user-1",
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
           },
         ],
       };
@@ -82,8 +82,8 @@ describe('Workflow Hooks', () => {
       });
     });
 
-    it('should handle error state', async () => {
-      mockApi.getWorkflows.mockRejectedValue(new Error('Failed to fetch'));
+    it("should handle error state", async () => {
+      mockApi.getWorkflows.mockRejectedValue(new Error("Failed to fetch"));
 
       const { result } = renderHook(() => useWorkflows(), {
         wrapper: createWrapper(),
@@ -96,23 +96,23 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useWorkflow', () => {
-    it('should fetch single workflow', async () => {
+  describe("useWorkflow", () => {
+    it("should fetch single workflow", async () => {
       const mockWorkflow = {
-        id: 'wf-1',
-        name: 'Test Workflow',
-        description: 'Test',
+        id: "wf-1",
+        name: "Test Workflow",
+        description: "Test",
         active: true,
         definition: { nodes: [], edges: [] },
         timeout_seconds: 300,
-        created_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+        created_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       mockApi.getWorkflow.mockResolvedValue(mockWorkflow);
 
-      const { result } = renderHook(() => useWorkflow('wf-1'), {
+      const { result } = renderHook(() => useWorkflow("wf-1"), {
         wrapper: createWrapper(),
       });
 
@@ -121,8 +121,8 @@ describe('Workflow Hooks', () => {
       });
     });
 
-    it('should not fetch when id is empty', () => {
-      const { result } = renderHook(() => useWorkflow(''), {
+    it("should not fetch when id is empty", () => {
+      const { result } = renderHook(() => useWorkflow(""), {
         wrapper: createWrapper(),
       });
 
@@ -131,18 +131,18 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useCreateWorkflow', () => {
-    it('should create workflow successfully', async () => {
+  describe("useCreateWorkflow", () => {
+    it("should create workflow successfully", async () => {
       const newWorkflow = {
-        id: 'wf-1',
-        name: 'New Workflow',
-        description: 'Description',
+        id: "wf-1",
+        name: "New Workflow",
+        description: "Description",
         active: true,
         definition: { nodes: [], edges: [] },
         timeout_seconds: 300,
-        created_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+        created_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-01T00:00:00Z",
       };
 
       mockApi.createWorkflow.mockResolvedValue(newWorkflow);
@@ -153,15 +153,15 @@ describe('Workflow Hooks', () => {
 
       await act(async () => {
         await result.current.mutateAsync({
-          name: 'New Workflow',
-          description: 'Description',
+          name: "New Workflow",
+          description: "Description",
           definition: { nodes: [], edges: [] },
         });
       });
 
       expect(mockApi.createWorkflow).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'New Workflow',
+          name: "New Workflow",
         })
       );
 
@@ -170,8 +170,8 @@ describe('Workflow Hooks', () => {
       });
     });
 
-    it('should handle creation error', async () => {
-      mockApi.createWorkflow.mockRejectedValue(new Error('Creation failed'));
+    it("should handle creation error", async () => {
+      mockApi.createWorkflow.mockRejectedValue(new Error("Creation failed"));
 
       const { result } = renderHook(() => useCreateWorkflow(), {
         wrapper: createWrapper(),
@@ -180,7 +180,7 @@ describe('Workflow Hooks', () => {
       await act(async () => {
         try {
           await result.current.mutateAsync({
-            name: 'New Workflow',
+            name: "New Workflow",
             definition: { nodes: [], edges: [] },
           });
         } catch (err) {
@@ -194,18 +194,18 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useUpdateWorkflow', () => {
-    it('should update workflow successfully', async () => {
+  describe("useUpdateWorkflow", () => {
+    it("should update workflow successfully", async () => {
       const updatedWorkflow = {
-        id: 'wf-1',
-        name: 'Updated Workflow',
-        description: 'Updated',
+        id: "wf-1",
+        name: "Updated Workflow",
+        description: "Updated",
         active: true,
         definition: { nodes: [], edges: [] },
         timeout_seconds: 300,
-        created_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z',
+        created_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       };
 
       mockApi.updateWorkflow.mockResolvedValue(updatedWorkflow);
@@ -216,13 +216,13 @@ describe('Workflow Hooks', () => {
 
       await act(async () => {
         await result.current.mutateAsync({
-          id: 'wf-1',
-          data: { name: 'Updated Workflow' },
+          id: "wf-1",
+          data: { name: "Updated Workflow" },
         });
       });
 
-      expect(mockApi.updateWorkflow).toHaveBeenCalledWith('wf-1', {
-        name: 'Updated Workflow',
+      expect(mockApi.updateWorkflow).toHaveBeenCalledWith("wf-1", {
+        name: "Updated Workflow",
       });
 
       await waitFor(() => {
@@ -231,8 +231,8 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useDeleteWorkflow', () => {
-    it('should delete workflow successfully', async () => {
+  describe("useDeleteWorkflow", () => {
+    it("should delete workflow successfully", async () => {
       mockApi.deleteWorkflow.mockResolvedValue(undefined);
 
       const { result } = renderHook(() => useDeleteWorkflow(), {
@@ -240,10 +240,10 @@ describe('Workflow Hooks', () => {
       });
 
       await act(async () => {
-        await result.current.mutateAsync('wf-1');
+        await result.current.mutateAsync("wf-1");
       });
 
-      expect(mockApi.deleteWorkflow).toHaveBeenCalledWith('wf-1');
+      expect(mockApi.deleteWorkflow).toHaveBeenCalledWith("wf-1");
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -251,15 +251,15 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useTriggerWorkflow', () => {
-    it('should trigger workflow successfully', async () => {
+  describe("useTriggerWorkflow", () => {
+    it("should trigger workflow successfully", async () => {
       const mockRun = {
-        id: 'run-1',
-        workflow_id: 'wf-1',
-        tenant_id: 'tenant-1',
-        status: 'pending' as const,
-        triggered_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
+        id: "run-1",
+        workflow_id: "wf-1",
+        tenant_id: "tenant-1",
+        status: "pending" as const,
+        triggered_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
       };
 
       mockApi.triggerWorkflow.mockResolvedValue(mockRun);
@@ -269,10 +269,10 @@ describe('Workflow Hooks', () => {
       });
 
       await act(async () => {
-        await result.current.mutateAsync('wf-1');
+        await result.current.mutateAsync("wf-1");
       });
 
-      expect(mockApi.triggerWorkflow).toHaveBeenCalledWith('wf-1');
+      expect(mockApi.triggerWorkflow).toHaveBeenCalledWith("wf-1");
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
@@ -280,24 +280,24 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useRuns', () => {
-    it('should fetch runs successfully', async () => {
+  describe("useRuns", () => {
+    it("should fetch runs successfully", async () => {
       const mockRuns = {
         runs: [
           {
-            id: 'run-1',
-            workflow_id: 'wf-1',
-            tenant_id: 'tenant-1',
-            status: 'success' as const,
-            triggered_by: 'user-1',
-            created_at: '2024-01-01T00:00:00Z',
+            id: "run-1",
+            workflow_id: "wf-1",
+            tenant_id: "tenant-1",
+            status: "success" as const,
+            triggered_by: "user-1",
+            created_at: "2024-01-01T00:00:00Z",
           },
         ],
       };
 
       mockApi.getRuns.mockResolvedValue(mockRuns);
 
-      const { result } = renderHook(() => useRuns('wf-1'), {
+      const { result } = renderHook(() => useRuns("wf-1"), {
         wrapper: createWrapper(),
       });
 
@@ -306,16 +306,16 @@ describe('Workflow Hooks', () => {
       });
     });
 
-    it('should fetch all runs when no workflowId provided', async () => {
+    it("should fetch all runs when no workflowId provided", async () => {
       const mockRuns = {
         runs: [
           {
-            id: 'run-1',
-            workflow_id: 'wf-1',
-            tenant_id: 'tenant-1',
-            status: 'success' as const,
-            triggered_by: 'user-1',
-            created_at: '2024-01-01T00:00:00Z',
+            id: "run-1",
+            workflow_id: "wf-1",
+            tenant_id: "tenant-1",
+            status: "success" as const,
+            triggered_by: "user-1",
+            created_at: "2024-01-01T00:00:00Z",
           },
         ],
       };
@@ -333,38 +333,54 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useWorkflowVersions', () => {
-    it('should fetch workflow versions successfully', async () => {
+  describe("useWorkflowVersions", () => {
+    it("should fetch workflow versions successfully", async () => {
       const mockVersions = {
         versions: [
           {
-            id: 'ver-1',
-            workflow_id: 'wf-1',
+            id: "ver-1",
+            workflow_id: "wf-1",
             version: 1,
             definition: {
-              nodes: [{ id: 'node-1', type: 'http', name: 'Test', config: {}, position: { x: 0, y: 0 } }],
+              nodes: [
+                {
+                  id: "node-1",
+                  type: "http",
+                  name: "Test",
+                  config: {},
+                  position: { x: 0, y: 0 },
+                },
+              ],
               edges: [],
             },
-            created_by: 'user-1',
-            created_at: '2024-01-01T00:00:00Z',
+            created_by: "user-1",
+            created_at: "2024-01-01T00:00:00Z",
           },
           {
-            id: 'ver-2',
-            workflow_id: 'wf-1',
+            id: "ver-2",
+            workflow_id: "wf-1",
             version: 2,
             definition: {
-              nodes: [{ id: 'node-1', type: 'http', name: 'Test Updated', config: {}, position: { x: 0, y: 0 } }],
+              nodes: [
+                {
+                  id: "node-1",
+                  type: "http",
+                  name: "Test Updated",
+                  config: {},
+                  position: { x: 0, y: 0 },
+                },
+              ],
               edges: [],
             },
-            created_by: 'user-1',
-            created_at: '2024-01-02T00:00:00Z',
+            created_by: "user-1",
+            created_at: "2024-01-02T00:00:00Z",
           },
         ],
       };
 
       mockApi.getWorkflowVersions.mockResolvedValue(mockVersions);
 
-      const { result } = renderHook(() => useWorkflowVersions('wf-1'), {
+      const { result } = renderHook(() => useWorkflowVersions("wf-1"), {
         wrapper: createWrapper(),
       });
 
@@ -374,11 +390,11 @@ describe('Workflow Hooks', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(mockApi.getWorkflowVersions).toHaveBeenCalledWith('wf-1');
+      expect(mockApi.getWorkflowVersions).toHaveBeenCalledWith("wf-1");
     });
 
-    it('should not fetch when workflowId is empty', () => {
-      const { result } = renderHook(() => useWorkflowVersions(''), {
+    it("should not fetch when workflowId is empty", () => {
+      const { result } = renderHook(() => useWorkflowVersions(""), {
         wrapper: createWrapper(),
       });
 
@@ -386,10 +402,10 @@ describe('Workflow Hooks', () => {
       expect(result.current.data).toBeUndefined();
     });
 
-    it('should handle empty versions list', async () => {
+    it("should handle empty versions list", async () => {
       mockApi.getWorkflowVersions.mockResolvedValue({ versions: [] });
 
-      const { result } = renderHook(() => useWorkflowVersions('wf-1'), {
+      const { result } = renderHook(() => useWorkflowVersions("wf-1"), {
         wrapper: createWrapper(),
       });
 
@@ -399,10 +415,12 @@ describe('Workflow Hooks', () => {
       });
     });
 
-    it('should handle error state', async () => {
-      mockApi.getWorkflowVersions.mockRejectedValue(new Error('Failed to fetch versions'));
+    it("should handle error state", async () => {
+      mockApi.getWorkflowVersions.mockRejectedValue(
+        new Error("Failed to fetch versions")
+      );
 
-      const { result } = renderHook(() => useWorkflowVersions('wf-1'), {
+      const { result } = renderHook(() => useWorkflowVersions("wf-1"), {
         wrapper: createWrapper(),
       });
 
@@ -413,21 +431,29 @@ describe('Workflow Hooks', () => {
     });
   });
 
-  describe('useRollbackWorkflow', () => {
-    it('should rollback workflow successfully', async () => {
+  describe("useRollbackWorkflow", () => {
+    it("should rollback workflow successfully", async () => {
       const mockWorkflow = {
-        id: 'wf-1',
-        name: 'Test Workflow',
-        description: 'Test',
+        id: "wf-1",
+        name: "Test Workflow",
+        description: "Test",
         active: true,
         definition: {
-          nodes: [{ id: 'node-1', type: 'http', name: 'Test', config: {}, position: { x: 0, y: 0 } }],
+          nodes: [
+            {
+              id: "node-1",
+              type: "http",
+              name: "Test",
+              config: {},
+              position: { x: 0, y: 0 },
+            },
+          ],
           edges: [],
         },
         timeout_seconds: 300,
-        created_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z',
+        created_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       };
 
       mockApi.rollbackWorkflow.mockResolvedValue(mockWorkflow);
@@ -437,18 +463,20 @@ describe('Workflow Hooks', () => {
       });
 
       await act(async () => {
-        await result.current.mutateAsync({ id: 'wf-1', version: 1 });
+        await result.current.mutateAsync({ id: "wf-1", version: 1 });
       });
 
-      expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith('wf-1', 1);
+      expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith("wf-1", 1);
 
       await waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
     });
 
-    it('should handle rollback error', async () => {
-      mockApi.rollbackWorkflow.mockRejectedValue(new Error('Version not found'));
+    it("should handle rollback error", async () => {
+      mockApi.rollbackWorkflow.mockRejectedValue(
+        new Error("Version not found")
+      );
 
       const { result } = renderHook(() => useRollbackWorkflow(), {
         wrapper: createWrapper(),
@@ -456,7 +484,7 @@ describe('Workflow Hooks', () => {
 
       await act(async () => {
         try {
-          await result.current.mutateAsync({ id: 'wf-1', version: 999 });
+          await result.current.mutateAsync({ id: "wf-1", version: 999 });
         } catch (err) {
           // Expected error
         }
@@ -465,20 +493,20 @@ describe('Workflow Hooks', () => {
       await waitFor(() => {
         expect(result.current.isError).toBe(true);
       });
-      expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith('wf-1', 999);
+      expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith("wf-1", 999);
     });
 
-    it('should invalidate queries on successful rollback', async () => {
+    it("should invalidate queries on successful rollback", async () => {
       const mockWorkflow = {
-        id: 'wf-1',
-        name: 'Test Workflow',
-        description: 'Test',
+        id: "wf-1",
+        name: "Test Workflow",
+        description: "Test",
         active: true,
         definition: { nodes: [], edges: [] },
         timeout_seconds: 300,
-        created_by: 'user-1',
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-02T00:00:00Z',
+        created_by: "user-1",
+        created_at: "2024-01-01T00:00:00Z",
+        updated_at: "2024-01-02T00:00:00Z",
       };
 
       mockApi.rollbackWorkflow.mockResolvedValue(mockWorkflow);
@@ -493,16 +521,18 @@ describe('Workflow Hooks', () => {
 
       const { result } = renderHook(() => useRollbackWorkflow(), {
         wrapper: ({ children }) => (
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
         ),
       });
 
       // Set some initial data
-      queryClient.setQueryData(['workflow', 'wf-1'], mockWorkflow);
-      queryClient.setQueryData(['workflow-versions', 'wf-1'], [{ version: 1 }]);
+      queryClient.setQueryData(["workflow", "wf-1"], mockWorkflow);
+      queryClient.setQueryData(["workflow-versions", "wf-1"], [{ version: 1 }]);
 
       await act(async () => {
-        await result.current.mutateAsync({ id: 'wf-1', version: 1 });
+        await result.current.mutateAsync({ id: "wf-1", version: 1 });
       });
 
       await waitFor(() => {
@@ -510,8 +540,12 @@ describe('Workflow Hooks', () => {
       });
 
       // Verify that queries were invalidated
-      expect(queryClient.getQueryState(['workflow', 'wf-1'])?.isInvalidated).toBe(true);
-      expect(queryClient.getQueryState(['workflow-versions', 'wf-1'])?.isInvalidated).toBe(true);
+      expect(
+        queryClient.getQueryState(["workflow", "wf-1"])?.isInvalidated
+      ).toBe(true);
+      expect(
+        queryClient.getQueryState(["workflow-versions", "wf-1"])?.isInvalidated
+      ).toBe(true);
     });
   });
 });

@@ -1,10 +1,10 @@
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import type React from "react";
 import "@testing-library/jest-dom";
-import VersionHistory from "../VersionHistory";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider } from "@/components/Snackbar";
 import { api } from "@/lib/api";
+import VersionHistory from "../VersionHistory";
 
 // Mock the API module
 jest.mock("@/lib/api", () => ({
@@ -58,7 +58,7 @@ describe("VersionHistory Component", () => {
 
   it("should render loading state", () => {
     mockApi.getWorkflowVersions.mockImplementation(
-      () => new Promise(() => {}), // Never resolves to keep loading state
+      () => new Promise(() => {}) // Never resolves to keep loading state
     );
 
     render(<VersionHistory workflowId="wf-1" />, {
@@ -90,8 +90,8 @@ describe("VersionHistory Component", () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "No version history available. Create your first version by updating the workflow.",
-        ),
+          "No version history available. Create your first version by updating the workflow."
+        )
       ).toBeInTheDocument();
     });
   });
@@ -292,13 +292,13 @@ describe("VersionHistory Component", () => {
     await waitFor(() => {
       expect(global.confirm).toHaveBeenCalledWith(
         expect.stringContaining(
-          "Are you sure you want to rollback to version 1",
-        ),
+          "Are you sure you want to rollback to version 1"
+        )
       );
       expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith("wf-1", 1);
       expect(mockApi.rollbackWorkflow).toHaveBeenCalledWith("wf-1", 1);
       expect(
-        screen.getByText("Successfully rolled back to version 1"),
+        screen.getByText("Successfully rolled back to version 1")
       ).toBeInTheDocument();
       expect(window.location.reload).toHaveBeenCalled();
     });

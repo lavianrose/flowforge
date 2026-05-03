@@ -29,7 +29,7 @@ COPY src ./src
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Runtime stage - minimal alpine
+# Runtime stage — standalone includes all needed deps, no npm install needed
 FROM node:20-alpine
 
 WORKDIR /app
@@ -38,14 +38,7 @@ WORKDIR /app
 RUN addgroup -g 1001 -S appuser && \
     adduser -u 1001 -S appuser -G appuser
 
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN --mount=type=cache,target=/root/.npm \
-    npm ci --only=production --prefer-offline --no-audit --no-fund
-
-# Copy built assets from builder
+# Copy standalone output (includes minimal node_modules)
 COPY --from=builder --chown=appuser:appuser /app/.next/standalone ./
 COPY --from=builder --chown=appuser:appuser /app/.next/static ./.next/static
 COPY --from=builder --chown=appuser:appuser /app/public ./public

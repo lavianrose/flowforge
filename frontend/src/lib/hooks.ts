@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api, LoginRequest, Workflow, WorkflowRun, WorkflowVersion } from './api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api, type LoginRequest, type Workflow, type WorkflowRun } from "./api";
 
 // Auth hooks
 export function useLogin() {
@@ -11,14 +11,14 @@ export function useLogin() {
     mutationFn: (data: LoginRequest) => api.login(data),
     onSuccess: (data) => {
       api.setToken(data.token);
-      queryClient.invalidateQueries({ queryKey: ['me'] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
 }
 
 export function useMe() {
   return useQuery({
-    queryKey: ['me'],
+    queryKey: ["me"],
     queryFn: () => api.getMe(),
     retry: false,
   });
@@ -27,7 +27,7 @@ export function useMe() {
 // Workflow hooks
 export function useWorkflows() {
   return useQuery({
-    queryKey: ['workflows'],
+    queryKey: ["workflows"],
     queryFn: async () => {
       const data = await api.getWorkflows();
       return data.workflows;
@@ -38,7 +38,7 @@ export function useWorkflows() {
 
 export function useWorkflow(id: string) {
   return useQuery({
-    queryKey: ['workflow', id],
+    queryKey: ["workflow", id],
     queryFn: () => api.getWorkflow(id),
     enabled: !!id,
   });
@@ -51,10 +51,10 @@ export function useCreateWorkflow() {
     mutationFn: (data: Partial<Workflow>) => api.createWorkflow(data),
     onMutate: async (newWorkflow) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['workflows'] });
+      await queryClient.cancelQueries({ queryKey: ["workflows"] });
 
       // Snapshot previous value
-      const previousWorkflows = queryClient.getQueryData(['workflows']);
+      const previousWorkflows = queryClient.getQueryData(["workflows"]);
 
       // Optimistically add workflow to list
       const optimisticWorkflow = {
@@ -67,9 +67,10 @@ export function useCreateWorkflow() {
         definition: { nodes: [], edges: [] },
       };
 
-      queryClient.setQueryData(['workflows'], (old: any) => {
-        return [optimisticWorkflow, ...(old || [])];
-      });
+      queryClient.setQueryData(["workflows"], (old: any) => [
+        optimisticWorkflow,
+        ...(old || []),
+      ]);
 
       // Return context with previous value for rollback
       return { previousWorkflows };
@@ -77,12 +78,12 @@ export function useCreateWorkflow() {
     onError: (err, variables, context) => {
       // Rollback to previous value on error
       if (context?.previousWorkflows) {
-        queryClient.setQueryData(['workflows'], context.previousWorkflows);
+        queryClient.setQueryData(["workflows"], context.previousWorkflows);
       }
     },
     onSuccess: () => {
       // Refetch to get the actual data from server
-      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }
@@ -95,24 +96,28 @@ export function useUpdateWorkflow() {
       api.updateWorkflow(id, data),
     onMutate: async ({ id, data }) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['workflow', id] });
-      await queryClient.cancelQueries({ queryKey: ['workflows'] });
+      await queryClient.cancelQueries({ queryKey: ["workflow", id] });
+      await queryClient.cancelQueries({ queryKey: ["workflows"] });
 
       // Snapshot previous values
-      const previousWorkflow = queryClient.getQueryData(['workflow', id]);
-      const previousWorkflows = queryClient.getQueryData(['workflows']);
+      const previousWorkflow = queryClient.getQueryData(["workflow", id]);
+      const previousWorkflows = queryClient.getQueryData(["workflows"]);
 
       // Optimistically update workflow
-      queryClient.setQueryData(['workflow', id], (old: any) => ({
+      queryClient.setQueryData(["workflow", id], (old: any) => ({
         ...old,
         ...data,
         updated_at: new Date().toISOString(),
       }));
 
-      queryClient.setQueryData(['workflows'], (old: any) =>
-        old?.map((w: any) =>
-          w.id === id ? { ...w, ...data, updated_at: new Date().toISOString() } : w
-        ) || []
+      queryClient.setQueryData(
+        ["workflows"],
+        (old: any) =>
+          old?.map((w: any) =>
+            w.id === id
+              ? { ...w, ...data, updated_at: new Date().toISOString() }
+              : w
+          ) || []
       );
 
       // Return context with previous values for rollback
@@ -121,16 +126,19 @@ export function useUpdateWorkflow() {
     onError: (err, variables, context) => {
       // Rollback to previous values on error
       if (context?.previousWorkflow) {
-        queryClient.setQueryData(['workflow', variables.id], context.previousWorkflow);
+        queryClient.setQueryData(
+          ["workflow", variables.id],
+          context.previousWorkflow
+        );
       }
       if (context?.previousWorkflows) {
-        queryClient.setQueryData(['workflows'], context.previousWorkflows);
+        queryClient.setQueryData(["workflows"], context.previousWorkflows);
       }
     },
     onSuccess: (_, variables) => {
       // Refetch to get the actual data from server
-      queryClient.invalidateQueries({ queryKey: ['workflow', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      queryClient.invalidateQueries({ queryKey: ["workflow", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }
@@ -142,15 +150,16 @@ export function useDeleteWorkflow() {
     mutationFn: (id: string) => api.deleteWorkflow(id),
     onMutate: async (workflowId) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['workflows'] });
+      await queryClient.cancelQueries({ queryKey: ["workflows"] });
 
       // Snapshot previous value
-      const previousWorkflows = queryClient.getQueryData(['workflows']);
+      const previousWorkflows = queryClient.getQueryData(["workflows"]);
 
       // Optimistically remove workflow from list
-      queryClient.setQueryData(['workflows'], (old: any) => {
-        return old?.filter((w: any) => w.id !== workflowId) || [];
-      });
+      queryClient.setQueryData(
+        ["workflows"],
+        (old: any) => old?.filter((w: any) => w.id !== workflowId) || []
+      );
 
       // Return context with previous value for rollback
       return { previousWorkflows };
@@ -158,12 +167,12 @@ export function useDeleteWorkflow() {
     onError: (err, variables, context) => {
       // Rollback to previous value on error
       if (context?.previousWorkflows) {
-        queryClient.setQueryData(['workflows'], context.previousWorkflows);
+        queryClient.setQueryData(["workflows"], context.previousWorkflows);
       }
     },
     onSuccess: () => {
       // Refetch to ensure consistency
-      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }
@@ -175,18 +184,18 @@ export function useTriggerWorkflow() {
     mutationFn: (id: string) => api.triggerWorkflow(id),
     onMutate: async (workflowId) => {
       // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['runs'] });
+      await queryClient.cancelQueries({ queryKey: ["runs"] });
 
       // Snapshot previous value
-      const previousRuns = queryClient.getQueryData(['runs']);
+      const previousRuns = queryClient.getQueryData(["runs"]);
 
       // Optimistically update runs list
-      queryClient.setQueryData(['runs'], (old: any) => {
+      queryClient.setQueryData(["runs"], (old: any) => {
         const optimisticRun = {
           id: `temp-${Date.now()}`,
           workflow_id: workflowId,
-          status: 'pending',
-          triggered_by: 'you',
+          status: "pending",
+          triggered_by: "you",
           started_at: new Date().toISOString(),
           completed_at: null,
           error: null,
@@ -203,13 +212,13 @@ export function useTriggerWorkflow() {
     onError: (err, variables, context) => {
       // Rollback to previous value on error
       if (context?.previousRuns) {
-        queryClient.setQueryData(['runs'], context.previousRuns);
+        queryClient.setQueryData(["runs"], context.previousRuns);
       }
     },
     onSuccess: () => {
       // Refetch to get the actual data from server
-      queryClient.invalidateQueries({ queryKey: ['runs'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ["runs"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
     },
   });
 }
@@ -217,7 +226,7 @@ export function useTriggerWorkflow() {
 // Run hooks
 export function useRuns(workflowId?: string) {
   return useQuery({
-    queryKey: ['runs', workflowId],
+    queryKey: ["runs", workflowId],
     queryFn: async () => {
       const data = await api.getRuns(workflowId);
       return data.runs;
@@ -228,12 +237,12 @@ export function useRuns(workflowId?: string) {
 
 export function useRun(id: string) {
   return useQuery<{ run: WorkflowRun; steps: any[] }>({
-    queryKey: ['run', id],
+    queryKey: ["run", id],
     queryFn: () => api.getRun(id),
     enabled: !!id,
     refetchInterval(data: any) {
       // Poll every 1 second if run is pending or running
-      if (data?.run?.status === 'pending' || data?.run?.status === 'running') {
+      if (data?.run?.status === "pending" || data?.run?.status === "running") {
         return 1000;
       }
       return false;
@@ -244,7 +253,7 @@ export function useRun(id: string) {
 // Stats hooks
 export function useHealthStats() {
   return useQuery({
-    queryKey: ['stats', 'health'],
+    queryKey: ["stats", "health"],
     queryFn: () => api.getHealthStats(),
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
   });
@@ -253,7 +262,7 @@ export function useHealthStats() {
 // Version hooks
 export function useWorkflowVersions(id: string) {
   return useQuery({
-    queryKey: ['workflow-versions', id],
+    queryKey: ["workflow-versions", id],
     queryFn: async () => {
       const data = await api.getWorkflowVersions(id);
       return data.versions;
@@ -271,9 +280,11 @@ export function useRollbackWorkflow() {
       api.rollbackWorkflow(id, version),
     onSuccess: (_, variables) => {
       // Invalidate workflow and versions queries
-      queryClient.invalidateQueries({ queryKey: ['workflow', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['workflow-versions', variables.id] });
-      queryClient.invalidateQueries({ queryKey: ['workflows'] });
+      queryClient.invalidateQueries({ queryKey: ["workflow", variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["workflow-versions", variables.id],
+      });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }
