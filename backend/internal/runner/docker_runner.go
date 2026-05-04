@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -191,14 +192,16 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 	}
 
 	// Parse stdout as JSON
-	stdout := stdoutBuf.String()
+	stdout := strings.TrimSpace(stdoutBuf.String())
 	if stdout == "" {
 		return nil, fmt.Errorf("script produced no output")
 	}
 
 	var output map[string]interface{}
-	if err := json.Unmarshal(stdoutBuf.Bytes(), &output); err != nil {
-		return nil, fmt.Errorf("script output is not valid JSON: %s", stdout)
+	if err := json.Unmarshal([]byte(stdout), &output); err != nil {
+		// stdout is not a JSON object -- wrap raw output in a result map
+		result.Output = map[string]interface{}{"output": stdout}
+		return result, nil
 	}
 
 	result.Output = output
