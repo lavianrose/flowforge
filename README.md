@@ -75,7 +75,7 @@ docker-compose up -d
 | Role   | Email                  | Password  | Access                              |
 | ------ | ---------------------- | --------- | ----------------------------------- |
 | Admin  | admin@flowforge.local  | admin123  | Full access (CRUD, trigger, delete) |
-| Editor | editor@flowforge.local | editor123 | Create, edit, trigger workflows     |
+| Editor | editor@flowforge.local | editor123 | Create, edit, trigger, delete schedules/webhooks |
 | Viewer | viewer@flowforge.local | viewer123 | Read-only access                    |
 
 ## API Documentation
@@ -206,6 +206,13 @@ GET /api/v1/schedules
 Authorization: Bearer <token>
 ```
 
+#### Delete Schedule
+
+```http
+DELETE /api/v1/schedules/{id}
+Authorization: Bearer <token>
+```
+
 ### Webhooks
 
 #### Create Webhook
@@ -225,6 +232,13 @@ Content-Type: application/json
 {
   "payload": "data"
 }
+```
+
+#### Delete Webhook
+
+```http
+DELETE /api/v1/webhooks/{id}
+Authorization: Bearer <token>
 ```
 
 ### Statistics

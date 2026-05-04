@@ -45,6 +45,13 @@ Always complete highest priority unfinished item first.
 - [x] ARCHITECTURE.md final review
 <!-- - [ ] AI failure analyzer -->
 
+- [x] Fix schedule/webhook delete bugs
+  - [x] Fix API client crash on 204 No Content response (response.json on empty body)
+  - [x] Fix RBAC permission mismatch: editor can delete schedules/webhooks per backend but frontend only showed for admin
+  - [x] Add granular delete_schedule and delete_webhook permissions
+  - [x] Update ScheduleManager, WebhookManager, SchedulesPage to use new permissions
+  - [x] Update RBAC permission tests
+
 ---
 
 ## Current Focus
@@ -90,7 +97,7 @@ Always complete highest priority unfinished item first.
 #### Test Users
 
 - **Admin**: admin@flowforge.local / admin123 (full access)
-- **Editor**: editor@flowforge.local / editor123 (create, edit, trigger - no delete)
+- **Editor**: editor@flowforge.local / editor123 (create, edit, trigger, delete schedules/webhooks)
 - **Viewer**: viewer@flowforge.local / viewer123 (read-only)
 
 #### Frontend Permission Tests
@@ -112,10 +119,13 @@ Always complete highest priority unfinished item first.
   - [x] Verify "Run" button is visible on workflow cards
   - [x] Verify "Edit Workflow" button is visible
   - [x] Verify "Delete" button is NOT visible
+  - [x] Verify schedule/webhook "Delete" buttons ARE visible
   - [x] Create a new workflow successfully
   - [x] Edit an existing workflow successfully
   - [x] Trigger a workflow successfully
   - [x] Attempt to delete workflow → button hidden
+  - [x] Delete schedule successfully
+  - [x] Delete webhook successfully
 
 - [x] Login with viewer user
   - [x] Verify role badge shows "Viewer" in gray
@@ -143,6 +153,8 @@ Always complete highest priority unfinished item first.
   - [x] PUT /api/v1/workflows/:id → 200 OK
   - [x] POST /api/v1/workflows/:id/trigger → 200 OK
   - [x] DELETE /api/v1/workflows/:id → 403 Forbidden
+  - [x] DELETE /api/v1/schedules/:id → 204 No Content
+  - [x] DELETE /api/v1/webhooks/:id → 204 No Content
 
 - [x] Test Admin permissions
   - [x] GET /api/v1/workflows → 200 OK
@@ -257,7 +269,7 @@ Always complete highest priority unfinished item first.
 - [x] Enforce role-based access control
   - [x] Apply Role middleware to all endpoints
   - [x] Viewer: read-only access
-  - [x] Editor: create, update, trigger workflows
+  - [x] Editor: create, update, trigger workflows, delete schedules/webhooks
   - [x] Admin: full access including delete
 
 - [x] Add comprehensive input validation
