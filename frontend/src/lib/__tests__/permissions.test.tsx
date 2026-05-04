@@ -47,6 +47,8 @@ describe("RBAC Permissions", () => {
       expect(result.current.can("trigger")).toBe(true);
       expect(result.current.can("delete")).toBe(true);
       expect(result.current.can("rollback")).toBe(true);
+      expect(result.current.can("delete_schedule")).toBe(true);
+      expect(result.current.can("delete_webhook")).toBe(true);
     });
 
     it("should have admin role badge color", async () => {
@@ -97,6 +99,8 @@ describe("RBAC Permissions", () => {
       expect(result.current.can("trigger")).toBe(true);
       expect(result.current.can("rollback")).toBe(true);
       expect(result.current.can("delete")).toBe(false);
+      expect(result.current.can("delete_schedule")).toBe(true);
+      expect(result.current.can("delete_webhook")).toBe(true);
     });
 
     it("should have editor role badge color", async () => {
@@ -269,6 +273,8 @@ describe("RBAC Permissions", () => {
             trigger: true,
             delete: true,
             rollback: true,
+            delete_schedule: true,
+            delete_webhook: true,
           },
         },
         {
@@ -280,6 +286,8 @@ describe("RBAC Permissions", () => {
             trigger: true,
             delete: false,
             rollback: true,
+            delete_schedule: true,
+            delete_webhook: true,
           },
         },
         {
@@ -291,6 +299,8 @@ describe("RBAC Permissions", () => {
             trigger: false,
             delete: false,
             rollback: false,
+            delete_schedule: false,
+            delete_webhook: false,
           },
         },
       ];

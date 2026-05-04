@@ -84,6 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case "edit":
       case "trigger":
       case "rollback":
+      case "delete_schedule":
+      case "delete_webhook":
         return role === "editor" || role === "admin";
       case "delete":
         return role === "admin";
