@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { api } from "@/lib/api";
 import { AuthProvider } from "@/lib/auth";
@@ -171,10 +171,14 @@ describe("DashboardLayout - RBAC", () => {
         expect(screen.getByText("Logout")).toBeInTheDocument();
       });
 
-      screen.getByText("Logout").click();
+      act(() => {
+        screen.getByText("Logout").click();
+      });
 
-      expect(localStorage.getItem("token")).toBeNull();
-      expect(mockApi.clearToken).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(localStorage.getItem("token")).toBeNull();
+        expect(mockApi.clearToken).toHaveBeenCalled();
+      });
     });
   });
 
