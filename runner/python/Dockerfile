@@ -2,12 +2,7 @@ FROM python:3.12-alpine
 
 RUN pip install --no-cache-dir requests httpx pyyaml jinja2
 
-WORKDIR /runner
-
-COPY run.sh /runner/run.sh
-RUN chmod +x /runner/run.sh
-
 RUN adduser -D runner
 USER runner
 
-ENTRYPOINT ["/runner/run.sh"]
+ENTRYPOINT ["/bin/sh", "-c", "echo \"$INPUTS_B64\" | base64 -d > /tmp/input.json && printf '%s' \"$CODE\" > /tmp/user_code.py && exec python3 /tmp/user_code.py"]

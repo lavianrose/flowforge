@@ -3,6 +3,7 @@ package runner
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -56,18 +57,21 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 
 	pidsLimit := int64(64)
 
-	// Build inputs JSON for stdin
+	// Encode inputs as base64 to avoid shell escaping issues
 	inputJSON, err := json.Marshal(params.Inputs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal inputs: %w", err)
 	}
+	inputsB64 := base64.StdEncoding.EncodeToString(inputJSON)
 
-	// Create container
+	// Create container -- no stdin needed, all data via env vars
 	createResp, err := r.cli.ContainerCreate(ctx, &container.Config{
-		Image:     img,
-		OpenStdin: true,
-		Tty:       false,
-		Env:       []string{fmt.Sprintf("CODE=%s", params.Code)},
+		Image: img,
+		Tty:   false,
+		Env: []string{
+			fmt.Sprintf("CODE=%s", params.Code),
+			fmt.Sprintf("INPUTS_B64=%s", inputsB64),
+		},
 		Labels: map[string]string{
 			"flowforge": "true",
 			"tenant_id": params.TenantID,
@@ -105,20 +109,6 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 		r.cli.ContainerRemove(context.Background(), createResp.ID, container.RemoveOptions{Force: true})
 	}()
 
-	// Attach to container stdin only to pipe inputs
-	hijackedResp, err := r.cli.ContainerAttach(ctx, createResp.ID, container.AttachOptions{
-		Stream: true,
-		Stdin:  true,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to attach to container: %w", err)
-	}
-
-	// Write inputs to stdin
-	hijackedResp.Conn.Write(inputJSON)
-	hijackedResp.Conn.Close()
-	hijackedResp.Close()
-
 	// Start container
 	if err := r.cli.ContainerStart(ctx, createResp.ID, container.StartOptions{}); err != nil {
 		return nil, fmt.Errorf("failed to start container: %w", err)
@@ -153,7 +143,7 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 	inspectResp, err := r.cli.ContainerInspect(context.Background(), createResp.ID)
 	oomKilled := err == nil && inspectResp.State != nil && inspectResp.State.OOMKilled
 
-	// Get output via logs API (reliable -- container already finished)
+	// Get output via logs API
 	logsReader, err := r.cli.ContainerLogs(context.Background(), createResp.ID, container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
