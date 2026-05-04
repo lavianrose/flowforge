@@ -27,7 +27,7 @@ const getDefaultConfig = (type: string) => {
     case "delay":
       return { seconds: 5 };
     case "script":
-      return { code: "" };
+      return { code: "", language: "template" };
     case "condition":
       return { expression: "" };
     default:

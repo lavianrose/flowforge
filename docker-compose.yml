@@ -42,6 +42,11 @@ services:
       POSTGRES_URL: postgres://flowforge:flowforge@postgres:5432/flowforge?sslmode=disable
       REDIS_URL: redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      DOCKER_HOST: unix:///var/run/docker.sock
+      DOCKER_PYTHON_IMAGE: flowforge/runner-python:latest
+      DOCKER_NODE_IMAGE: flowforge/runner-nodejs:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,6 +68,23 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  # Runner images (build-only, use: docker compose --profile runners build)
+  runner-python:
+    build:
+      context: ./runner/python
+      dockerfile: Dockerfile
+    image: flowforge/runner-python:latest
+    profiles:
+      - runners
+
+  runner-nodejs:
+    build:
+      context: ./runner/nodejs
+      dockerfile: Dockerfile
+    image: flowforge/runner-nodejs:latest
+    profiles:
+      - runners
 
 volumes:
   postgres_data:

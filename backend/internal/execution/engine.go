@@ -16,6 +16,7 @@ import (
 	"github.com/lavianrose/flowforge/internal/dag"
 	"github.com/lavianrose/flowforge/internal/models"
 	"github.com/lavianrose/flowforge/internal/repository"
+	"github.com/lavianrose/flowforge/internal/runner"
 )
 
 const (
@@ -34,14 +35,16 @@ type Engine struct {
 	runRepo      RunRepository
 	workflowRepo *repository.WorkflowRepository
 	validator    *dag.Validator
+	runner       runner.ContainerRunner
 	wg           sync.WaitGroup
 }
 
-func NewEngine(runRepo *repository.RunRepository, workflowRepo *repository.WorkflowRepository) *Engine {
+func NewEngine(runRepo *repository.RunRepository, workflowRepo *repository.WorkflowRepository, r runner.ContainerRunner) *Engine {
 	return &Engine{
 		runRepo:      runRepo,
 		workflowRepo: workflowRepo,
 		validator:    dag.NewValidator(),
+		runner:       r,
 	}
 }
 
@@ -118,7 +121,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 
 		for _, nodeID := range level {
 			wg.Add(1)
-			go e.executeNode(ctx, &wg, errChan, workflow, runID, nodeID, nodeOutputs, &outputsMu)
+			go e.executeNode(ctx, &wg, errChan, workflow, runID, nodeID, nodeOutputs, &outputsMu, workflow.TenantID)
 		}
 
 		wg.Wait()
@@ -143,7 +146,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, workflow *models.Workflow,
 	}
 }
 
-func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, runID string, nodeID string, outputs map[string]interface{}, outputsMu *sync.Mutex) {
+func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan chan<- error, workflow *models.Workflow, runID string, nodeID string, outputs map[string]interface{}, outputsMu *sync.Mutex, tenantID string) {
 	defer wg.Done()
 
 	// Find node
@@ -191,7 +194,7 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 	}
 
 	for attempt := 0; attempt < defaultNodeRetryCount; attempt++ {
-		output, err := e.executeNodeLogic(ctx, node, inputsCopy)
+		output, err := e.executeNodeLogic(ctx, node, inputsCopy, tenantID, runID)
 		if err == nil {
 			step.Status = "success"
 			step.Output = output
@@ -251,14 +254,14 @@ func (e *Engine) executeNode(ctx context.Context, wg *sync.WaitGroup, errChan ch
 	}
 }
 
-func (e *Engine) executeNodeLogic(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (e *Engine) executeNodeLogic(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}, tenantID string, runID string) (map[string]interface{}, error) {
 	switch node.Type {
 	case "delay":
 		return e.executeDelay(ctx, node)
 	case "http":
 		return e.executeHTTP(ctx, node, inputs)
 	case "script":
-		return e.executeScript(ctx, node, inputs)
+		return e.executeScript(ctx, node, inputs, tenantID, runID)
 	case "condition":
 		return e.executeCondition(ctx, node, inputs)
 	default:
@@ -372,22 +375,52 @@ func (e *Engine) executeHTTP(ctx context.Context, node *models.WorkflowNode, inp
 	return result, nil
 }
 
-func (e *Engine) executeScript(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+func (e *Engine) executeScript(ctx context.Context, node *models.WorkflowNode, inputs map[string]interface{}, tenantID string, runID string) (map[string]interface{}, error) {
 	code, _ := node.Config["code"].(string)
 	if code == "" {
 		return nil, fmt.Errorf("script node: code is required")
 	}
 
-	// Build a sandboxed evaluation context with inputs available
-	result := make(map[string]interface{})
+	language, _ := node.Config["language"].(string)
 
-	// Execute simple expressions supported:
-	// 1. "transform" mode: expects a "return" statement with JSON-like expression
-	// 2. We evaluate simple JSON transforms using Go's text/template style
+	// If no language specified or template mode, fall back to template-based execution
+	if language == "" || language == "template" || e.runner == nil {
+		return e.executeTemplateScript(node, inputs)
+	}
 
-	// For MVP: support simple JSON path extraction and transformation
-	// Pattern: return inputs.node_id.field or return {"key": "value"}
+	// Validate language
+	if language != "python" && language != "javascript" {
+		return nil, fmt.Errorf("script node: unsupported language '%s' (supported: python, javascript)", language)
+	}
+
+	// Execute in container
+	result, err := e.runner.Run(ctx, runner.RunParams{
+		Language: language,
+		Code:     code,
+		Inputs:   inputs,
+		TenantID: tenantID,
+		RunID:    runID,
+		StepID:   node.ID,
+	})
+	if err != nil {
+		if result != nil && result.OOMKilled {
+			return nil, fmt.Errorf("script node: container OOM killed (exceeded memory limit)")
+		}
+		if result != nil && result.TimedOut {
+			return nil, fmt.Errorf("script node: execution timed out")
+		}
+		return nil, fmt.Errorf("script node: %w", err)
+	}
+
+	return result.Output, nil
+}
+
+// executeTemplateScript performs the original template-based JSON transformation.
+func (e *Engine) executeTemplateScript(node *models.WorkflowNode, inputs map[string]interface{}) (map[string]interface{}, error) {
+	code, _ := node.Config["code"].(string)
 	code = strings.TrimSpace(code)
+
+	result := make(map[string]interface{})
 
 	// Check if it's a simple return statement with JSON
 	if strings.HasPrefix(code, "return ") {

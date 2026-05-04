@@ -115,6 +115,12 @@ func (v *Validator) validateNodeConfig(node *models.WorkflowNode) error {
 		if _, ok := node.Config["code"]; !ok {
 			return errors.New("script node requires 'code' in config")
 		}
+		if lang, ok := node.Config["language"].(string); ok && lang != "" {
+			validLangs := map[string]bool{"python": true, "javascript": true, "template": true}
+			if !validLangs[lang] {
+				return fmt.Errorf("script node: unsupported language '%s'", lang)
+			}
+		}
 
 	case "condition":
 		if node.Config == nil {

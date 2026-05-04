@@ -19,6 +19,7 @@ import (
 	"github.com/lavianrose/flowforge/internal/handlers"
 	"github.com/lavianrose/flowforge/internal/middleware"
 	"github.com/lavianrose/flowforge/internal/repository"
+	"github.com/lavianrose/flowforge/internal/runner"
 	"github.com/lavianrose/flowforge/internal/scheduler"
 )
 
@@ -36,6 +37,7 @@ type Server struct {
 	statsHdl    *handlers.StatsHandler
 	scheduler   *scheduler.Scheduler
 	engine      *execution.Engine
+	dockerRunner runner.ContainerRunner
 }
 
 func New(cfg *config.Config) *Server {
@@ -60,7 +62,20 @@ func New(cfg *config.Config) *Server {
 	workflowRepo := repository.NewWorkflowRepository(db.Pool)
 	runRepo := repository.NewRunRepository(db.Pool)
 
-	engine := execution.NewEngine(runRepo, workflowRepo)
+	// Initialize Docker runner (optional -- fails gracefully)
+	var containerRunner runner.ContainerRunner
+	dr, err := runner.NewDockerRunner(cfg.Docker)
+	if err != nil {
+		fmt.Printf("Warning: Docker runner not available (script containers disabled): %v\n", err)
+	} else {
+		containerRunner = dr
+		// Clean up any orphaned containers from previous runs
+		if err := dr.CleanupOrphaned(context.Background()); err != nil {
+			fmt.Printf("Warning: failed to clean up orphaned containers: %v\n", err)
+		}
+	}
+
+	engine := execution.NewEngine(runRepo, workflowRepo, containerRunner)
 
 	workflowHdl := handlers.NewWorkflowHandler(workflowRepo, runRepo, engine)
 	runHdl := handlers.NewRunHandler(runRepo)
@@ -76,19 +91,20 @@ func New(cfg *config.Config) *Server {
 	sched := scheduler.NewScheduler(scheduleRepo, workflowRepo, runRepo, engine)
 
 	return &Server{
-		app:         app,
-		cfg:         cfg,
-		jwtMgr:      jwtMgr,
-		authMW:      authMW,
-		rateLimit:   rateLimit,
-		authHdl:     authHdl,
-		workflowHdl: workflowHdl,
-		runHdl:      runHdl,
-		scheduleHdl: scheduleHdl,
-		webhookHdl:  webhookHdl,
-		statsHdl:    statsHdl,
-		scheduler:   sched,
-		engine:      engine,
+		app:          app,
+		cfg:          cfg,
+		jwtMgr:       jwtMgr,
+		authMW:       authMW,
+		rateLimit:    rateLimit,
+		authHdl:      authHdl,
+		workflowHdl:  workflowHdl,
+		runHdl:       runHdl,
+		scheduleHdl:  scheduleHdl,
+		webhookHdl:   webhookHdl,
+		statsHdl:     statsHdl,
+		scheduler:    sched,
+		engine:       engine,
+		dockerRunner: containerRunner,
 	}
 }
 
@@ -198,6 +214,11 @@ func (s *Server) Start() error {
 	// Wait for in-flight workflow executions to finish
 	fmt.Println("Waiting for in-flight workflow executions to complete...")
 	s.engine.Wait()
+
+	// Close Docker runner
+	if s.dockerRunner != nil {
+		s.dockerRunner.Close()
+	}
 
 	fmt.Println("Server shutdown complete")
 	return nil
