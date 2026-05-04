@@ -155,6 +155,10 @@ export class APIClient {
       throw new Error(error.error || error.message || "Request failed");
     }
 
+    if (response.status === 204) {
+      return undefined as T;
+    }
+
     return response.json();
   }
 

@@ -175,7 +175,7 @@ export default function ScheduleManager({ workflowId }: ScheduleManagerProps) {
                   )}
                 </div>
               </div>
-              {can("delete") && (
+              {can("delete_schedule") && (
                 <button
                   className="rounded px-2 py-1 text-red-600 text-sm hover:bg-red-50 disabled:opacity-50"
                   disabled={deleteMutation.isPending}
