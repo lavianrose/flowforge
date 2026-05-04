@@ -69,11 +69,12 @@ describe("CustomNode", () => {
         data={{
           type: "script",
           label: "Transform",
-          config: { code: 'return {"key": "value"}' },
+          config: { code: "return data" },
         }}
       />
     );
-    expect(container.textContent).toContain('return {"key": "value"}');
+    expect(container.textContent).toContain("return data");
+    expect(container.textContent).toContain("[template]");
   });
 
   it("should show condition config summary", () => {

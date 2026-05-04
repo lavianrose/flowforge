@@ -32,11 +32,13 @@ function getConfigSummary(
     }
     case "script": {
       const code = (config.code as string) || "";
+      const lang = (config.language as string) || "template";
+      const langLabel = lang === "template" ? "template" : lang;
       if (!code) {
-        return "(no code)";
+        return `(no code) [${langLabel}]`;
       }
-      const short = code.length > 25 ? code.slice(0, 25) + "..." : code;
-      return short;
+      const short = code.length > 20 ? code.slice(0, 20) + "..." : code;
+      return `${short} [${langLabel}]`;
     }
     case "condition": {
       const expr = (config.expression as string) || "";

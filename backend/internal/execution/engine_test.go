@@ -483,7 +483,7 @@ func TestExecuteScript_ReturnJSON(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeScript(context.Background(), node, nil)
+	output, err := e.executeScript(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, "hello", output["result"])
 }
@@ -498,7 +498,7 @@ func TestExecuteScript_DirectJSON(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeScript(context.Background(), node, nil)
+	output, err := e.executeScript(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, "value", output["key"])
 	assert.Equal(t, float64(42), output["count"])
@@ -520,7 +520,7 @@ func TestExecuteScript_WithTemplateVariables(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeScript(context.Background(), node, inputs)
+	output, err := e.executeScript(context.Background(), node, inputs, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, float64(200), output["status"])
 }
@@ -535,7 +535,7 @@ func TestExecuteScript_EmptyCode(t *testing.T) {
 		},
 	}
 
-	_, err := e.executeScript(context.Background(), node, nil)
+	_, err := e.executeScript(context.Background(), node, nil, "tenant1", "run1")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "code is required")
 }
@@ -726,7 +726,7 @@ func TestExecuteNode_RetriesOnTransientHTTPFailure(t *testing.T) {
 	errChan := make(chan error, 1)
 
 	wg.Add(1)
-	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu, "tenant1")
 	wg.Wait()
 	close(errChan)
 
@@ -772,7 +772,7 @@ func TestExecuteNode_ExhaustsRetriesOnPermanentFailure(t *testing.T) {
 	errChan := make(chan error, 1)
 
 	wg.Add(1)
-	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu)
+	go e.executeNode(context.Background(), &wg, errChan, workflow, "run1", "http1", outputs, &outputsMu, "tenant1")
 	wg.Wait()
 	close(errChan)
 
@@ -799,7 +799,7 @@ func TestExecuteNodeLogic_UnknownType(t *testing.T) {
 		Type: "unknown",
 	}
 
-	_, err := e.executeNodeLogic(context.Background(), node, nil)
+	_, err := e.executeNodeLogic(context.Background(), node, nil, "tenant1", "run1")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown node type")
 }
@@ -814,7 +814,7 @@ func TestExecuteNodeLogic_DispatchDelay(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeNodeLogic(context.Background(), node, nil)
+	output, err := e.executeNodeLogic(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Contains(t, output["message"], "Delayed")
 }
@@ -836,7 +836,7 @@ func TestExecuteNodeLogic_DispatchHTTP(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeNodeLogic(context.Background(), node, nil)
+	output, err := e.executeNodeLogic(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, 200, output["status_code"])
 }
@@ -851,7 +851,7 @@ func TestExecuteNodeLogic_DispatchScript(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeNodeLogic(context.Background(), node, nil)
+	output, err := e.executeNodeLogic(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, true, output["ok"])
 }
@@ -866,7 +866,7 @@ func TestExecuteNodeLogic_DispatchCondition(t *testing.T) {
 		},
 	}
 
-	output, err := e.executeNodeLogic(context.Background(), node, nil)
+	output, err := e.executeNodeLogic(context.Background(), node, nil, "tenant1", "run1")
 	require.NoError(t, err)
 	assert.Equal(t, true, output["passed"])
 }

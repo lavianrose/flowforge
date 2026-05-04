@@ -270,8 +270,30 @@ function ScriptConfig({
   config: NodeConfig;
   onChange: (key: string, value: unknown) => void;
 }) {
+  const language = (config.language as string) || "template";
+
+  const placeholders: Record<string, string> = {
+    template: 'return {"result": {{inputs.node_id.field}}}',
+    python: `import json\nwith open("/tmp/input.json") as f:\n    inputs = json.load(f)\n\nresult = {"key": inputs["node1"]["body"]}\nprint(json.dumps(result))`,
+    javascript: `const fs = require('fs');\nconst inputs = JSON.parse(fs.readFileSync('/tmp/input.json', 'utf8'));\n\nconst result = { key: inputs.node1.body };\nconsole.log(JSON.stringify(result));`,
+  };
+
   return (
     <div className="space-y-3">
+      <div>
+        <label className="mb-1 block font-medium text-gray-700 text-xs">
+          Language
+        </label>
+        <select
+          className="w-full rounded border border-gray-300 px-2 py-1.5 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          onChange={(e) => onChange("language", e.target.value)}
+          value={language}
+        >
+          <option value="template">Template (JSON transform)</option>
+          <option value="python">Python 3</option>
+          <option value="javascript">JavaScript (Node.js)</option>
+        </select>
+      </div>
       <div>
         <label className="mb-1 block font-medium text-gray-700 text-xs">
           Code *
@@ -279,14 +301,21 @@ function ScriptConfig({
         <textarea
           className="w-full rounded border border-gray-300 px-2 py-1.5 font-mono text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
           onChange={(e) => onChange("code", e.target.value)}
-          placeholder={'return {"result": {{inputs.node_id.field}}}'}
-          rows={8}
+          placeholder={placeholders[language] || placeholders.template}
+          rows={12}
           value={(config.code as string) || ""}
         />
-        <p className="mt-1 text-gray-400 text-xs">
-          Supports: <code>return {`{"key": "value"}`}</code> with template
-          variables {"{{inputs.node_id.field}}"}
-        </p>
+        {language === "template" ? (
+          <p className="mt-1 text-gray-400 text-xs">
+            Supports: <code>return {`{"key": "value"}`}</code> with template
+            variables {"{{inputs.node_id.field}}"}
+          </p>
+        ) : (
+          <p className="mt-1 text-gray-400 text-xs">
+            Read inputs from <code>/tmp/input.json</code>. Print JSON result to
+            stdout.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -13,8 +13,9 @@ Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitH
 - **Real-time Execution**: Live monitoring with Server-Sent Events (SSE)
 - **Multi-tenant**: Complete tenant isolation at database and API level
 - **Role-based Access Control**: Admin, Editor, Viewer roles with middleware enforcement
-- **Workflow Types**: HTTP requests, delays, scripts, conditions
+- **Workflow Types**: HTTP requests, delays, scripts (Python/JS), conditions
 - **Execution Engine**: Parallel processing with topological sorting
+- **Script Isolation**: Ephemeral Docker containers for Python 3 & JavaScript execution (env var I/O, no network, resource limits)
 - **Version Control**: Automatic workflow versioning with rollback
 - **Scheduling**: Cron-based workflow triggers
 - **Webhooks**: HTTP-based triggers with HMAC signature verification
@@ -46,6 +47,7 @@ Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitH
 
 - **Containerization**: Docker multi-stage builds
 - **Orchestration**: Docker Compose
+- **Script Isolation**: Ephemeral Docker containers (env var I/O, no network, resource limits)
 - **CI/CD**: GitHub Actions
 - **Testing**: 193+ tests with 30% coverage threshold
 
@@ -62,8 +64,11 @@ Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitH
 git clone https://github.com/lavianrose/flowforge.git
 cd flowforge
 
+# Build script runner images (Python 3 & Node.js)
+docker compose --profile runners build
+
 # Start all services
-docker-compose up -d
+docker compose up -d
 
 # Access the application
 # Frontend: http://localhost:3001
@@ -286,6 +291,7 @@ flowforge/
 │   │   ├── db/             # Database connections
 │   │   ├── execution/      # Workflow engine
 │   │   ├── handlers/       # HTTP handlers
+│   │   ├── runner/         # Docker container script execution
 │   │   ├── middleware/     # Auth, RBAC, rate limiting
 │   │   ├── migrate/        # Migration logic
 │   │   ├── models/         # Data models
@@ -305,6 +311,9 @@ flowforge/
 │   │   └── lib/            # Utilities & API client
 │   │       └── __tests__/  # Unit tests
 │   └── public/             # Static assets
+├── runner/                   # Script execution runner images
+│   ├── python/              # Python 3 runner (alpine + requests, httpx, pyyaml)
+│   └── nodejs/              # Node.js runner (alpine + axios, lodash)
 ├── .github/workflows/      # GitHub Actions CI/CD
 ├── docker-compose.yml      # Development environment
 ├── ARCHITECTURE.md         # Architecture documentation
@@ -318,7 +327,7 @@ flowforge/
 | --------- | --------------------------------------------------------------- |
 | HTTP      | Make HTTP requests with configurable methods, headers, and URLs |
 | Delay     | Pause workflow execution for a specified number of seconds      |
-| Script    | Execute custom scripts (placeholder for future implementation)  |
+| Script    | Execute Python 3 or JavaScript in isolated ephemeral containers |
 | Condition | Branch workflow execution based on conditional logic            |
 
 ## Execution Model
@@ -337,6 +346,7 @@ flowforge/
 - **SQL Injection Prevention**: Parameterized queries via pgx
 - **Rate Limiting**: Per-IP and per-user limits (auth: 10/min, read: 100/min, write: 30/min, trigger: 10/min)
 - **Webhook Security**: HMAC SHA256 signature verification
+- **Container Isolation**: Scripts run in ephemeral containers (no network, read-only FS, resource limits, dropped capabilities, code/inputs via base64-encoded env vars)
 
 ## Testing
 
@@ -371,11 +381,7 @@ MIT
 ## Roadmap
 
 - [ ] Enhanced HTTP node (auth, retries)
-- [ ] Script execution with sandboxing
-- [ ] Conditional branching
+- [x] Script execution with container isolation (Python 3, JavaScript)
+- [x] Conditional branching
 - [ ] AI-powered failure analysis
-- [ ] Workflow templates
-- [ ] Export/import workflows
 - [ ] Audit log
-- [ ] Metrics export (Prometheus, Grafana)
-- [ ] Sub-workflows
