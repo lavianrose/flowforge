@@ -47,7 +47,7 @@ Real-time multi-tenant workflow orchestration platform inspired by Zapier + GitH
 - **Containerization**: Docker multi-stage builds
 - **Orchestration**: Docker Compose
 - **CI/CD**: GitHub Actions
-- **Testing**: 193+ tests with 50% coverage threshold
+- **Testing**: 193+ tests with 30% coverage threshold
 
 ## Quick Start
 
@@ -72,11 +72,11 @@ docker-compose up -d
 
 ## Default Credentials
 
-| Role   | Email                  | Password  | Access                              |
-| ------ | ---------------------- | --------- | ----------------------------------- |
-| Admin  | admin@flowforge.local  | admin123  | Full access (CRUD, trigger, delete) |
+| Role   | Email                  | Password  | Access                                           |
+| ------ | ---------------------- | --------- | ------------------------------------------------ |
+| Admin  | admin@flowforge.local  | admin123  | Full access (CRUD, trigger, delete)              |
 | Editor | editor@flowforge.local | editor123 | Create, edit, trigger, delete schedules/webhooks |
-| Viewer | viewer@flowforge.local | viewer123 | Read-only access                    |
+| Viewer | viewer@flowforge.local | viewer123 | Read-only access                                 |
 
 ## API Documentation
 
