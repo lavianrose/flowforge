@@ -64,11 +64,10 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 
 	// Create container
 	createResp, err := r.cli.ContainerCreate(ctx, &container.Config{
-		Image:      img,
-		OpenStdin:  true,
-		StdinOnce:  true,
-		Tty:        false,
-		Env:        []string{fmt.Sprintf("CODE=%s", params.Code)},
+		Image:     img,
+		OpenStdin: true,
+		Tty:       false,
+		Env:       []string{fmt.Sprintf("CODE=%s", params.Code)},
 		Labels: map[string]string{
 			"flowforge": "true",
 			"tenant_id": params.TenantID,
@@ -106,34 +105,24 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 		r.cli.ContainerRemove(context.Background(), createResp.ID, container.RemoveOptions{Force: true})
 	}()
 
-	// Attach to container
+	// Attach to container stdin only to pipe inputs
 	hijackedResp, err := r.cli.ContainerAttach(ctx, createResp.ID, container.AttachOptions{
 		Stream: true,
 		Stdin:  true,
-		Stdout: true,
-		Stderr: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach to container: %w", err)
 	}
-	defer hijackedResp.Close()
 
-	// Write inputs to stdin in a goroutine
-	stdinDone := make(chan struct{})
-	go func() {
-		defer close(stdinDone)
-		hijackedResp.Conn.Write(inputJSON)
-		hijackedResp.Conn.Close()
-	}()
+	// Write inputs to stdin
+	hijackedResp.Conn.Write(inputJSON)
+	hijackedResp.Conn.Close()
+	hijackedResp.Close()
 
 	// Start container
 	if err := r.cli.ContainerStart(ctx, createResp.ID, container.StartOptions{}); err != nil {
 		return nil, fmt.Errorf("failed to start container: %w", err)
 	}
-
-	// Read stdout and stderr
-	var stdoutBuf, stderrBuf bytes.Buffer
-	_, copyErr := stdcopy.StdCopy(&stdoutBuf, &stderrBuf, hijackedResp.Reader)
 
 	// Wait for container with timeout
 	timeout := time.Duration(r.config.DefaultTimeoutS) * time.Second
@@ -164,18 +153,23 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 	inspectResp, err := r.cli.ContainerInspect(context.Background(), createResp.ID)
 	oomKilled := err == nil && inspectResp.State != nil && inspectResp.State.OOMKilled
 
-	// Wait for stdin goroutine to finish
-	<-stdinDone
-
-	// Handle copy error after container exits
-	if copyErr != nil && copyErr != io.EOF {
-		return nil, fmt.Errorf("failed to read container output: %w", copyErr)
+	// Get output via logs API (reliable -- container already finished)
+	logsReader, err := r.cli.ContainerLogs(context.Background(), createResp.ID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container logs: %w", err)
 	}
+	defer logsReader.Close()
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	stdcopy.StdCopy(&stdoutBuf, &stderrBuf, logsReader)
 
 	result := &Result{
 		ExitCode:  int(exitCode),
 		OOMKilled: oomKilled,
-		Stderr:    stderrBuf.String(),
+		Stderr:    strings.TrimSpace(stderrBuf.String()),
 		Duration:  time.Since(start),
 	}
 
@@ -184,7 +178,7 @@ func (r *DockerRunner) Run(ctx context.Context, params RunParams) (*Result, erro
 	}
 
 	if exitCode != 0 {
-		stderr := stderrBuf.String()
+		stderr := result.Stderr
 		if stderr == "" {
 			stderr = "(no stderr output)"
 		}
