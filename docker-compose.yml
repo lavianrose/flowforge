@@ -47,6 +47,8 @@ services:
       DOCKER_NODE_IMAGE: flowforge/runner-nodejs:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "0"
     depends_on:
       postgres:
         condition: service_healthy
